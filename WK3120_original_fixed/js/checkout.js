@@ -353,15 +353,12 @@ function EditModal({item, onClose, onSave}){
 }
 
 function CartList({cart, setCart, canCalc}){
-  
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   useEffect(()=>{
     try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
   },[]);
-
-  
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -407,7 +404,7 @@ function CartList({cart, setCart, canCalc}){
               </li>
             );
           })}</ul>
-        }
+        )}
 
         <div className="mt-3 text-right text-sm">Subtotal: <b>{soles(subtotal)}</b></div>
         {cart.length>0 && (canCalc
@@ -533,5 +530,16 @@ function App(){
 
   return (<div>
     <HeaderMini onSeguir={seguirComprando}/>
-    <DatosEntrega stat
+    <DatosEntrega state={state} setState={setState}/>
+    <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
+    <PaymentBox total={total} canCalc={canCalc}/>
+    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
+      <button onClick={enviar} className="w-full btn-pill text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800">
+        Enviar pedido por WhatsApp
+      </button>
+    </section>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
