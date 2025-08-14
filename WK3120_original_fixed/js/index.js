@@ -43,8 +43,8 @@ function Header({count}){
       </div>
       <div className="mt-2 w-full">
         <div className="rounded-full border border-amber-300 bg-amber-50 text-amber-900 text-sm px-4 py-2">
-          Pedidos con <b>24 h</b> de anticipación.
-        </div>
+             Pedidos con <b>24h</b> de anticipación. <b><i>(Entregas solo fines de semana)</i></b>
+      </div>
       </div>
     </div>
   </header>);
