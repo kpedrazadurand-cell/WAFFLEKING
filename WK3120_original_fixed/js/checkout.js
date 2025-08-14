@@ -1,10 +1,13 @@
-const {useState,useEffect}=React;
+const {useState,useEffect,useRef}=React;
+
+/* ========= Config / assets ========= */
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
 
+/* ========= Copiar al portapapeles ========= */
 async function copyText(text,setCopied){
   try{ await navigator.clipboard.writeText(text); setCopied(true); }
   catch(e){
@@ -15,7 +18,60 @@ async function copyText(text,setCopied){
   setTimeout(()=>setCopied(false),1600);
 }
 
-// Header now receives callback in props so we can persist before navigating
+/* =========================================================================
+   ✅ Google Maps helpers (Maps JS + Geocoding) — sin Places
+   - Carga del script de Maps sólo una vez
+   - Geocoding (dirección → lat/lng) y Reverse Geocoding (lat/lng → dirección)
+   - Key: usa window.GMAPS_API_KEY si la defines en HTML. Si no, usa la fija.
+   ========================================================================= */
+
+const GMAPS_KEY = (typeof window!=='undefined' && window.GMAPS_API_KEY) 
+  ? window.GMAPS_API_KEY 
+  : "AIzaSyALZet3e7qwAh3OI2ydAhq-d82QTi6mtSQ"; // <-- tu key
+
+let __gmapsLoadingPromise = null;
+function loadGoogleMaps(){
+  if (typeof window==='undefined') return Promise.reject(new Error('no-window'));
+  if (window.google && window.google.maps) return Promise.resolve();
+  if (__gmapsLoadingPromise) return __gmapsLoadingPromise;
+
+  __gmapsLoadingPromise = new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}`;
+    s.async=true; s.defer=true;
+    s.onload=()=>resolve();
+    s.onerror=()=>reject(new Error('gmaps-load-error'));
+    document.head.appendChild(s);
+  });
+  return __gmapsLoadingPromise;
+}
+
+async function geocodeAddress(address){
+  // Direccion → lat/lng
+  const url=`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GMAPS_KEY}`;
+  const res=await fetch(url); const data=await res.json();
+  if(data.status==='OK' && data.results && data.results[0]){
+    const r=data.results[0];
+    return {
+      lat:r.geometry.location.lat,
+      lng:r.geometry.location.lng,
+      formatted:r.formatted_address
+    };
+  }
+  throw new Error(data.status||'NO_RESULTS');
+}
+
+async function reverseGeocode(lat,lng){
+  // lat/lng → direccion
+  const url=`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GMAPS_KEY}`;
+  const res=await fetch(url); const data=await res.json();
+  if(data.status==='OK' && data.results && data.results[0]){
+    return data.results[0].formatted_address;
+  }
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+/* ========= Header mini ========= */
 function HeaderMini({onSeguir}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
@@ -30,6 +86,7 @@ function HeaderMini({onSeguir}){
   </header>);
 }
 
+/* ========= Teléfono (9 dígitos, preview) ========= */
 function PhoneInput({value,onChange}){
   const [val,setVal]=useState((value||"").replace(/\D/g,"").slice(-9));
   useEffect(()=>{ setVal((value||"").replace(/\D/g,"").slice(-9)); },[value]);
@@ -49,12 +106,21 @@ function PhoneInput({value,onChange}){
   );
 }
 
+/* ========= Distritos ========= */
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
+/* =========================================================================
+   ✅ Datos de entrega + Mapa:
+   - Carga Google Maps
+   - Mini-mapa con marker draggable
+   - "Mi ubicación" (Geo + reverse geocode)
+   - Cuando escriben la dirección, se geocodifica y mueve el pin
+   ========================================================================= */
 function DatosEntrega({state,setState}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
-  // 1) cargar una sola vez (hidratar)
+
+  // Hidratar desde localStorage
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
@@ -65,7 +131,7 @@ function DatosEntrega({state,setState}){
     }catch(e){}
     setHydrated(true);
   },[]);
-  // 2) guardar SOLO después de hidratar, para no sobrescribir con vacíos
+  // Persistir después de hidratar
   useEffect(()=>{
     if(!hydrated) return;
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
@@ -74,78 +140,108 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) =========================
-     - Reintenta con menor precisión si hay timeout
-     - Mensajes claros para iPhone/Android
-     - Reverse geocoding (Nominatim) para dirección legible
-     - Persiste como parte de Datos de entrega
-  ============================================================================== */
+  // Refs para mapa
+  const mapNode=useRef(null);
+  const mapRef=useRef(null);
+  const markerRef=useRef(null);
+  const geocodeTimer=useRef(0);
 
-  // Helper: promesa para getCurrentPosition
-  function getPos(opts){
-    return new Promise((resolve, reject)=>{
-      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
-    });
-  }
-  // Intenta alta precisión y reintenta con menor precisión si hay timeout
-  async function obtenerPosicionRobusta(){
-    try{
-      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
-    }catch(e){
-      if(e && e.code===3){ // TIMEOUT
-        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
+  // Carga de Maps e init del mapa sólo una vez
+  useEffect(()=>{
+    let mounted=true;
+    (async()=>{
+      try{
+        await loadGoogleMaps();
+        if(!mounted) return;
+        const center={lat:-12.046373,lng:-77.042754}; // Lima
+        mapRef.current=new google.maps.Map(mapNode.current,{
+          center, zoom:15, disableDefaultUI:true
+        });
+        markerRef.current=new google.maps.Marker({
+          position:center, map:mapRef.current, draggable:true
+        });
+        // Si ya hay dirección guardada, centra
+        if(direccion){
+          try{
+            const q=distrito? `${direccion}, ${distrito}`: direccion;
+            const r=await geocodeAddress(q);
+            const pos={lat:r.lat,lng:r.lng};
+            mapRef.current.setCenter(pos); mapRef.current.setZoom(16);
+            markerRef.current.setPosition(pos);
+            set('mapLink',`https://www.google.com/maps?q=${r.lat},${r.lng}`);
+          }catch(_){}
+        }
+        // Drag del pin → reverse geocode + actualiza dirección
+        markerRef.current.addListener('dragend', async ev=>{
+          const lat=ev.latLng.lat(), lng=ev.latLng.lng();
+          try{
+            const addr=await reverseGeocode(lat,lng);
+            set('direccion',addr);
+          }catch(_){ set('direccion',`${lat.toFixed(5)}, ${lng.toFixed(5)}`); }
+          set('mapLink',`https://www.google.com/maps?q=${lat},${lng}`);
+        });
+      }catch(e){
+        console.warn('GMAPS init error',e);
       }
-      throw e;
-    }
-  }
+    })();
+    return ()=>{ mounted=false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
+  // Si escriben la dirección, geocodifica (debounce) y mueve el pin
+  useEffect(()=>{
+    if(!mapRef.current || !direccion) return;
+    clearTimeout(geocodeTimer.current);
+    geocodeTimer.current=setTimeout(async ()=>{
+      try{
+        const q=distrito? `${direccion}, ${distrito}`: direccion;
+        const r=await geocodeAddress(q);
+        const pos={lat:r.lat,lng:r.lng};
+        mapRef.current.setCenter(pos); mapRef.current.setZoom(16);
+        markerRef.current.setPosition(pos);
+        set('mapLink',`https://www.google.com/maps?q=${r.lat},${r.lng}`);
+        // No sobreescribo "direccion" para respetar lo que tecleó el cliente
+        // (el reverse sí la reescribe con la exacta cuando mueven el pin o usan "Mi ubicación")
+      }catch(_){}
+    },600);
+    return ()=>clearTimeout(geocodeTimer.current);
+  },[direccion,distrito]);
+
+  // "Mi ubicación" robusto + reverse geocode de Google
+  function getPos(opts){
+    return new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,opts));
+  }
+  async function obtenerPosicionRobusta(){
+    try{ return await getPos({enableHighAccuracy:true,timeout:8000,maximumAge:0}); }
+    catch(e){ if(e&&e.code===3) return await getPos({enableHighAccuracy:false,timeout:8000,maximumAge:60000}); throw e; }
+  }
   const handleUbicacion = async () => {
-    if (!('geolocation' in navigator)) {
-      toast('Tu navegador no soporta ubicación.');
-      return;
-    }
+    if(!('geolocation' in navigator)){ toast('Tu navegador no soporta ubicación.'); return; }
     toast('Obteniendo ubicación…');
     try{
-      const { coords } = await obtenerPosicionRobusta();
-      const lat = coords.latitude, lng = coords.longitude;
-      const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
-
-      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; // fallback
-      try{
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-        const res = await fetch(url, { headers: { 'Accept':'application/json' } });
-        const data = await res.json();
-        if(data){
-          if (data.address){
-            const a = data.address;
-            const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-            const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
-            const ciudad = (a.city || a.town || a.village || a.county || '').trim();
-            const region = (a.state || '').trim();
-            const cp     = (a.postcode || '').trim();
-            const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
-            if (partes.length) finalDireccion = partes.join(', ');
-          }
-          if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
-        }
-      }catch(_){ /* dejamos fallback */ }
-
-      set('direccion', finalDireccion);
-      set('mapLink', mapsURL);
+      const {coords}=await obtenerPosicionRobusta();
+      const lat=coords.latitude, lng=coords.longitude;
+      let addr;
+      try{ addr=await reverseGeocode(lat,lng); }catch(_){ addr=`${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
+      set('direccion',addr);
+      set('mapLink',`https://www.google.com/maps?q=${lat},${lng}`);
+      if(mapRef.current && markerRef.current){
+        const pos={lat,lng};
+        mapRef.current.setCenter(pos); mapRef.current.setZoom(16);
+        markerRef.current.setPosition(pos);
+      }
       toast('Ubicación detectada ✓');
     }catch(err){
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
       if (err && err.code === 1) {
         toast(isIOS
           ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
-          : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
+          : 'Permiso denegado. Revisa permisos de ubicación del navegador.');
       } else if (err && err.code === 2) {
         toast('Posición no disponible. Activa GPS o prueba en exterior.');
       } else if (err && err.code === 3) {
-        toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
-      } else {
-        toast('Error de ubicación. Intenta de nuevo.');
-      }
+        toast('Tiempo agotado. Intenta nuevamente.');
+      } else { toast('Error de ubicación.'); }
     }
   };
 
@@ -154,16 +250,22 @@ function DatosEntrega({state,setState}){
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <h3 className="font-semibold mb-2">Datos de entrega</h3>
         <div className="space-y-2">
-          <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+          <div>
+            <label className="text-sm font-medium">Nombre</label>
+            <input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+          </div>
+
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
-          <div><label className="text-sm font-medium">Distrito</label>
+
+          <div>
+            <label className="text-sm font-medium">Distrito</label>
             <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
               <option value="">Selecciona distrito</option>
               {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
-          {/* Dirección + botón a la derecha */}
+          {/* Dirección + botón y mini-mapa */}
           <div>
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
@@ -183,13 +285,28 @@ function DatosEntrega({state,setState}){
                 📍 Mi ubicación
               </button>
             </div>
+            <div ref={mapNode} className="mt-3 h-56 w-full rounded-xl border border-slate-200"></div>
           </div>
 
-          <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-          <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+          <div>
+            <label className="text-sm font-medium">Referencia</label>
+            <input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Link de Google Maps (opcional)</label>
+            <input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-sm font-medium">Fecha de entrega</label><input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-            <div><label className="text-sm font-medium">Hora</label><input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+            <div>
+              <label className="text-sm font-medium">Fecha de entrega</label>
+              <input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Hora</label>
+              <input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+            </div>
           </div>
         </div>
       </div>
@@ -197,6 +314,7 @@ function DatosEntrega({state,setState}){
   );
 }
 
+/* ========= Tu catálogo (igual que tenías) ========= */
 const PACKS=[
  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
@@ -223,6 +341,7 @@ const PREMIUM=[
  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
+/* ========= Modal de edición (igual) ========= */
 function EditModal({item, onClose, onSave}){
   const baseItem = JSON.parse(JSON.stringify(item||{}));
   const [packId,setPackId]=useState(baseItem.packId || "classic");
@@ -350,16 +469,14 @@ function EditModal({item, onClose, onSave}){
   );
 }
 
+/* ========= Resumen del carrito (igual) ========= */
 function CartList({cart, setCart, canCalc}){
-  
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   useEffect(()=>{
     try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
   },[]);
-
-  
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -422,6 +539,7 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
+/* ========= Pago (igual) ========= */
 function PaymentBox({total,canCalc}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
@@ -457,6 +575,7 @@ function PaymentBox({total,canCalc}){
   );
 }
 
+/* ========= Mensaje de WhatsApp (igual; usa mapLink si existe) ========= */
 function buildWhatsApp(cart,state,total){
   const L=[];
   if(cart.length===0){ return null; }
@@ -490,18 +609,17 @@ function buildWhatsApp(cart,state,total){
   return encodeURIComponent(L.join("\n"));
 }
 
+/* ========= App raíz (igual) ========= */
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
 
-  // Guardado extra por si el usuario cierra pestaña muy rápido
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
     window.addEventListener('beforeunload', handler);
     return ()=>window.removeEventListener('beforeunload', handler);
   },[state]);
 
-  // callback seguro para seguir comprando
   function seguirComprando(){
     try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
     location.href='index.html';
@@ -541,4 +659,6 @@ function App(){
     </section>
   </div>);
 }
+
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
