@@ -1,7 +1,7 @@
 const {useState,useEffect}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
-const YAPE="942504978";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
-const WHA="942504978";const DELIVERY=7;
+const YAPE="942504978";const NOMBRE_TITULAR="Sheila M. Sanchez T.";
+const WHA="51942504978";const DELIVERY=7;
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
 
