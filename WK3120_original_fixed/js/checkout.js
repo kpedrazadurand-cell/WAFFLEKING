@@ -73,6 +73,84 @@ function DatosEntrega({state,setState}){
 
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
+
+  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) =========================
+     - Reintenta con menor precisión si hay timeout
+     - Mensajes claros para iPhone/Android
+     - Reverse geocoding (Nominatim) para dirección legible
+     - Persiste como parte de Datos de entrega (no se borra al "Seguir comprando")
+  ============================================================================== */
+
+  // Helper: promesa para getCurrentPosition
+  function getPos(opts){
+    return new Promise((resolve, reject)=>{
+      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+    });
+  }
+  // Intenta alta precisión y reintenta con menor precisión si hay timeout
+  async function obtenerPosicionRobusta(){
+    try{
+      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
+    }catch(e){
+      if(e && e.code===3){ // TIMEOUT
+        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
+      }
+      throw e;
+    }
+  }
+
+  const handleUbicacion = async () => {
+    if (!('geolocation' in navigator)) {
+      toast('Tu navegador no soporta ubicación.');
+      return;
+    }
+    toast('Obteniendo ubicación…');
+    try{
+      const { coords } = await obtenerPosicionRobusta();
+      const lat = coords.latitude, lng = coords.longitude;
+      const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
+
+      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; // fallback
+      try{
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
+        const res = await fetch(url, { headers: { 'Accept':'application/json' } });
+        const data = await res.json();
+        if(data){
+          if (data.address){
+            const a = data.address;
+            const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
+            const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
+            const ciudad = (a.city || a.town || a.village || a.county || '').trim();
+            const region = (a.state || '').trim();
+            const cp     = (a.postcode || '').trim();
+            const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
+            if (partes.length) finalDireccion = partes.join(', ');
+          }
+          if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
+        }
+      }catch(_){ /* dejamos fallback */ }
+
+      set('direccion', finalDireccion);
+      set('mapLink', mapsURL);
+      try{ localStorage.setItem('direccion', finalDireccion); }catch(e){}
+
+      toast('Ubicación detectada ✓');
+    }catch(err){
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (err && err.code === 1) {
+        toast(isIOS
+          ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
+          : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
+      } else if (err && err.code === 2) {
+        toast('Posición no disponible. Activa GPS o prueba en exterior.');
+      } else if (err && err.code === 3) {
+        toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
+      } else {
+        toast('Error de ubicación. Intenta de nuevo.');
+      }
+    }
+  };
+
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
@@ -86,7 +164,29 @@ function DatosEntrega({state,setState}){
               {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-          <div><label className="text-sm font-medium">Dirección</label><input value={direccion||""} onChange={e=>set('direccion',e.target.value)} placeholder="Calle 123, Mz Lt" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+
+          {/* Dirección + botón a la derecha */}
+          <div>
+            <label className="text-sm font-medium">Dirección</label>
+            <div className="mt-1 flex gap-2">
+              <input
+                id="direccion"
+                value={direccion||""}
+                onChange={e=>set('direccion',e.target.value)}
+                placeholder="Calle 123, Mz Lt"
+                className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"
+              />
+              <button
+                type="button"
+                onClick={handleUbicacion}
+                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm"
+                title="Usar mi ubicación actual"
+              >
+                📍 Mi ubicación
+              </button>
+            </div>
+          </div>
+
           <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div className="grid grid-cols-2 gap-2">
@@ -433,15 +533,5 @@ function App(){
 
   return (<div>
     <HeaderMini onSeguir={seguirComprando}/>
-    <DatosEntrega state={state} setState={setState}/>
-    <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
-    <PaymentBox total={total} canCalc={canCalc}/>
-    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-      <button onClick={enviar} className="w-full btn-pill text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800">
-        Enviar pedido por WhatsApp
-      </button>
-    </section>
-  </div>);
-}
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+    <DatosEntrega stat
 
