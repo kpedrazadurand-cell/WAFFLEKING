@@ -545,7 +545,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 
 
-
 /* ==== WK Sheets Sync — Hook no intrusivo (pegar al final de checkout.js) ==== */
 (function(){
   // ⛳ URL de tu Apps Script (/exec) — versión nueva
