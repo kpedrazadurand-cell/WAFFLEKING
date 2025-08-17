@@ -548,8 +548,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 /* ==== WK Sheets Sync — Hook no intrusivo (pegar al final de checkout.js) ==== */
 (function(){
-  // ⛳ URL de tu Apps Script (/exec)
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBzX7RbZaxM5ZjWUgAIftiEvTogYgPokXCNJru15h9aOc_jZONIWGRv0id8F_Qk_YiuQ/exec";
+  // ⛳ URL de tu Apps Script (/exec) — versión nueva
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2sMiMO0dWhoamBNS0D2mFkt-BbbXhqZ7l3uB7af_2xi-SZVJdO5iIklA1U_lWh3Gn1w/exec";
 
   // Utilidad
   const solesToNum = (s) => {
@@ -575,7 +575,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
   // Parser del texto que ya arma tu WhatsApp
   function parseWhatsAppText(txt){
-    // Decodifica y normaliza
     const lines = txt.split(/\r?\n/).map(l => l.replace(/\u00A0/g," ").trim()).filter(Boolean);
     const payload = {
       version: "1.0",
@@ -589,8 +588,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
     let currentItem = null;
 
-    // Regex útiles
-    const reItem = /^\d+\.\s+(.+?)\s+x(\d+)\s+—/i;        // "1. Waffle Clásico x2 — S/ ..."
+    const reItem = /^\d+\.\s+(.+?)\s+x(\d+)\s+—/i;
     const reTops = /^·\s*Toppings:\s*(.+)$/i;
     const reSirs = /^·\s*Siropes:\s*(.+)$/i;
     const rePrem = /^·\s*Premium:\s*(.+)$/i;
@@ -598,17 +596,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     lines.forEach((raw) => {
       const line = raw;
 
-      // Fecha / Hora de entrega
-      if (/^Fecha de entrega:/i.test(line)){
-        payload.entrega.fecha = norm(line.split(":")[1]);
-        return;
-      }
-      if (/^Hora:/i.test(line)){
-        payload.entrega.hora = norm(line.split(":")[1]);
-        return;
-      }
+      if (/^Fecha de entrega:/i.test(line)){ payload.entrega.fecha = norm(line.split(":")[1]); return; }
+      if (/^Hora:/i.test(line)){ payload.entrega.hora = norm(line.split(":")[1]); return; }
 
-      // Ítems
       const mItem = line.match(reItem);
       if (mItem){
         const name = norm(mItem[1]);
@@ -618,22 +608,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
         return;
       }
 
-      // Detalles del ítem actual
       if (currentItem){
         const mT = line.match(reTops);
-        if (mT){
-          currentItem.toppings = mT[1].split(",").map(s => norm(s));
-          return;
-        }
+        if (mT){ currentItem.toppings = mT[1].split(",").map(s => norm(s)); return; }
+
         const mS = line.match(reSirs);
         if (mS){
-          // Limpia anotaciones de precio "(+S/ 2.00)"
           currentItem.siropes = mS[1].split(",").map(s => norm(s.replace(/\(\+?\s*S\/?\s*[\d.,]+\)/gi,"")));
           return;
         }
+
         const mP = line.match(rePrem);
         if (mP){
-          // "Pingüinito x2, Brownie x1"
           currentItem.premium = mP[1].split(",").map(s=>{
             const mm = s.trim().match(/(.+?)\s*x\s*(\d+)/i);
             if (mm) return { name: norm(mm[1]), qty: parseInt(mm[2],10)||1 };
@@ -643,16 +629,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
         }
       }
 
-      // Bloque de cliente / dirección / maps
       if (/^Cliente:/i.test(line)){ payload.cliente.nombre = norm(line.split(":")[1]); return; }
-      if (/^Tel:/i.test(line)){
-        const digits = line.replace(/[^\d]/g,"").slice(-9);
-        payload.cliente.telefono = digits;
-        return;
-      }
+      if (/^Tel:/i.test(line)){ payload.cliente.telefono = line.replace(/[^\d]/g,"").slice(-9); return; }
       if (/^Dirección:/i.test(line)){
         const rest = norm(line.split(":")[1]);
-        // Formato esperado: "Distrito — Dirección"
         const parts = rest.split("—");
         if (parts.length >= 2){
           payload.cliente.distrito = norm(parts[0]);
@@ -665,7 +645,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
       if (/^Referencia:/i.test(line)){ payload.cliente.referencia = norm(line.split(":")[1]); return; }
       if (/^Google Maps:/i.test(line)){ payload.cliente.mapLink = norm(line.split(":")[1]); return; }
 
-      // Totales
       if (/^Delivery:/i.test(line)){ payload.delivery = solesToNum(line); return; }
       if (/^Total a pagar:/i.test(line)){ payload.total = solesToNum(line); return; }
     });
@@ -678,12 +657,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
   window.open = function(url, target, features){
     try{
       if (typeof url === "string" && url.includes("https://wa.me/") && url.includes("?text=")){
-        // Extrae y decodifica el texto del WhatsApp
         const q = url.split("?text=")[1] || "";
         const decoded = decodeURIComponent(q.replace(/\+/g," "));
         const payload = parseWhatsAppText(decoded);
         if (payload && payload.items && payload.items.length){
-          sendPayload(payload); // no bloquea la apertura de WhatsApp
+          sendPayload(payload);
         }
       }
     }catch(e){ console.warn("WK hook error", e); }
