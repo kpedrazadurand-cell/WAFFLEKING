@@ -547,10 +547,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 /* ==== WK Sheets Sync — Hook no intrusivo (pegar al final de checkout.js) ==== */
 (function(){
-  // ⛳ URL de tu Apps Script (/exec) — versión nueva
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsMVzDetATR1UAPG0nxB2s-okytq2BaTIgR_dFdgfR2Xf7r3H-YtwnbkCmXVPuQ2enKQ/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw1xpOR0WA4EGLQIKj_uwaRWMWKs_wg2pbGgFh9qJWCJz_H_Eqfnq4a_tEAcR_2vi42yg/exec";
 
-  // Utilidad
   const solesToNum = (s) => {
     if (!s) return 0;
     const n = String(s).replace(/[^\d.,]/g,"").replace(/\./g,"").replace(",",".");
@@ -559,20 +557,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
   };
   const norm = (t) => (t||"").trim();
 
-  // Enviar sin bloquear la apertura de WhatsApp
   function sendPayload(payload){
     try{
       const body = JSON.stringify(payload);
+      // Intento 1: sendBeacon
       if (navigator.sendBeacon) {
-        const blob = new Blob([body], {type:"application/json"});
-        navigator.sendBeacon(SCRIPT_URL, blob);
-      } else {
-        fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body }).catch(()=>{});
+        const ok = navigator.sendBeacon(SCRIPT_URL, new Blob([body], {type:"application/json"}));
+        if (ok) return;
       }
+      // Fallback: fetch
+      fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body }).catch(()=>{});
     }catch(e){ console.warn("WK sync error", e); }
   }
 
-  // Parser del texto que ya arma tu WhatsApp
   function parseWhatsAppText(txt){
     const lines = txt.split(/\r?\n/).map(l => l.replace(/\u00A0/g," ").trim()).filter(Boolean);
     const payload = {
@@ -586,14 +583,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     };
 
     let currentItem = null;
-
     const reItem = /^\d+\.\s+(.+?)\s+x(\d+)\s+—/i;
     const reTops = /^·\s*Toppings:\s*(.+)$/i;
     const reSirs = /^·\s*Siropes:\s*(.+)$/i;
     const rePrem = /^·\s*Premium:\s*(.+)$/i;
 
-    lines.forEach((raw) => {
-      const line = raw;
+    lines.forEach((lineRaw) => {
+      const line = lineRaw;
 
       if (/^Fecha de entrega:/i.test(line)){ payload.entrega.fecha = norm(line.split(":")[1]); return; }
       if (/^Hora:/i.test(line)){ payload.entrega.hora = norm(line.split(":")[1]); return; }
@@ -651,7 +647,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     return payload;
   }
 
-  // Hook sin romper nada: intercepta cuando se abre WhatsApp y despacha a Sheets
   const _open = window.open;
   window.open = function(url, target, features){
     try{
