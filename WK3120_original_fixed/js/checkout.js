@@ -549,7 +549,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 /* ==== WK Sheets Sync — Hook no intrusivo (pegar al final de checkout.js) ==== */
 (function(){
   // ⛳ URL de tu Apps Script (/exec) — versión nueva
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2sMiMO0dWhoamBNS0D2mFkt-BbbXhqZ7l3uB7af_2xi-SZVJdO5iIklA1U_lWh3Gn1w/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsMVzDetATR1UAPG0nxB2s-okytq2BaTIgR_dFdgfR2Xf7r3H-YtwnbkCmXVPuQ2enKQ/exec";
 
   // Utilidad
   const solesToNum = (s) => {
