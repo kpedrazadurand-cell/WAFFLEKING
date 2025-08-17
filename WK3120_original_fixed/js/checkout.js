@@ -545,91 +545,110 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 
 
-/* ==== WK Sheets Sync — Hook no intrusivo (pegar al final de checkout.js) ==== */
-(function(){
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw1xpOR0WA4EGLQIKj_uwaRWMWKs_wg2pbGgFh9qJWCJz_H_Eqfnq4a_tEAcR_2vi42yg/exec";
+/* ==== Waffle King — Sync a Google Sheets (hook no intrusivo) ==== */
+(function () {
+  // ⛳ URL de tu Apps Script (actual)
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2sMiMO0dWhoamBNS0D2mFkt-BbbXhqZ7l3uB7af_2xi-SZVJdO5iIklA1U_lWh3Gn1w/exec";
 
+  // Utils
+  const norm = (t) => (t || "").trim();
   const solesToNum = (s) => {
     if (!s) return 0;
-    const n = String(s).replace(/[^\d.,]/g,"").replace(/\./g,"").replace(",",".");
+    const n = String(s).replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", ".");
     const v = parseFloat(n);
     return isNaN(v) ? 0 : v;
   };
-  const norm = (t) => (t||"").trim();
 
-  function sendPayload(payload){
-    try{
+  function sendPayload(payload) {
+    try {
       const body = JSON.stringify(payload);
+
       // Intento 1: sendBeacon
       if (navigator.sendBeacon) {
-        const ok = navigator.sendBeacon(SCRIPT_URL, new Blob([body], {type:"application/json"}));
+        const ok = navigator.sendBeacon(SCRIPT_URL, new Blob([body], { type: "application/json" }));
         if (ok) return;
       }
+
       // Fallback: fetch
-      fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body }).catch(()=>{});
-    }catch(e){ console.warn("WK sync error", e); }
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body
+      }).catch(() => {});
+    } catch (e) {
+      console.warn("WK sync error", e);
+    }
   }
 
-  function parseWhatsAppText(txt){
-    const lines = txt.split(/\r?\n/).map(l => l.replace(/\u00A0/g," ").trim()).filter(Boolean);
+  // Parser del texto que ya forma tu WhatsApp
+  function parseWhatsAppText(txt) {
+    const lines = txt.split(/\r?\n/).map(l => l.replace(/\u00A0/g, " ").trim()).filter(Boolean);
     const payload = {
       version: "1.0",
       fechaPedidoISO: new Date().toISOString(),
-      cliente: { nombre:"", telefono:"", distrito:"", direccion:"", referencia:"", mapLink:"" },
-      entrega: { fecha:"", hora:"" },
+      cliente: { nombre: "", telefono: "", distrito: "", direccion: "", referencia: "", mapLink: "" },
+      entrega: { fecha: "", hora: "" },
       delivery: 0,
       total: 0,
       items: []
     };
 
     let currentItem = null;
+
     const reItem = /^\d+\.\s+(.+?)\s+x(\d+)\s+—/i;
     const reTops = /^·\s*Toppings:\s*(.+)$/i;
     const reSirs = /^·\s*Siropes:\s*(.+)$/i;
     const rePrem = /^·\s*Premium:\s*(.+)$/i;
 
-    lines.forEach((lineRaw) => {
-      const line = lineRaw;
+    lines.forEach((raw) => {
+      const line = raw;
 
-      if (/^Fecha de entrega:/i.test(line)){ payload.entrega.fecha = norm(line.split(":")[1]); return; }
-      if (/^Hora:/i.test(line)){ payload.entrega.hora = norm(line.split(":")[1]); return; }
+      // Entrega
+      if (/^Fecha de entrega:/i.test(line)) { payload.entrega.fecha = norm(line.split(":")[1]); return; }
+      if (/^Hora:/i.test(line)) { payload.entrega.hora = norm(line.split(":")[1]); return; }
 
+      // Ítem de carrito
       const mItem = line.match(reItem);
-      if (mItem){
+      if (mItem) {
         const name = norm(mItem[1]);
-        const qty  = parseInt(mItem[2],10) || 1;
-        currentItem = { waffle: name, qty, toppings: [], siropes: [], premium: [], notes:"", recipient:"" };
+        const qty = parseInt(mItem[2], 10) || 1;
+        currentItem = { waffle: name, qty, toppings: [], siropes: [], premium: [], notes: "", recipient: "" };
         payload.items.push(currentItem);
         return;
       }
 
-      if (currentItem){
+      // Detalles del ítem
+      if (currentItem) {
         const mT = line.match(reTops);
-        if (mT){ currentItem.toppings = mT[1].split(",").map(s => norm(s)); return; }
+        if (mT) { currentItem.toppings = mT[1].split(",").map(s => norm(s)); return; }
 
         const mS = line.match(reSirs);
-        if (mS){
-          currentItem.siropes = mS[1].split(",").map(s => norm(s.replace(/\(\+?\s*S\/?\s*[\d.,]+\)/gi,"")));
+        if (mS) {
+          currentItem.siropes = mS[1]
+            .split(",")
+            .map(s => norm(s.replace(/\(\+?\s*S\/?\s*[\d.,]+\)/gi, "")));
           return;
         }
 
         const mP = line.match(rePrem);
-        if (mP){
-          currentItem.premium = mP[1].split(",").map(s=>{
+        if (mP) {
+          currentItem.premium = mP[1].split(",").map(s => {
             const mm = s.trim().match(/(.+?)\s*x\s*(\d+)/i);
-            if (mm) return { name: norm(mm[1]), qty: parseInt(mm[2],10)||1 };
+            if (mm) return { name: norm(mm[1]), qty: parseInt(mm[2], 10) || 1 };
             return { name: norm(s), qty: 1 };
           });
           return;
         }
       }
 
-      if (/^Cliente:/i.test(line)){ payload.cliente.nombre = norm(line.split(":")[1]); return; }
-      if (/^Tel:/i.test(line)){ payload.cliente.telefono = line.replace(/[^\d]/g,"").slice(-9); return; }
-      if (/^Dirección:/i.test(line)){
+      // Datos del cliente
+      if (/^Cliente:/i.test(line)) { payload.cliente.nombre = norm(line.split(":")[1]); return; }
+      if (/^Tel:/i.test(line))    { payload.cliente.telefono = line.replace(/[^\d]/g, "").slice(-9); return; }
+
+      if (/^Dirección:/i.test(line)) {
         const rest = norm(line.split(":")[1]);
         const parts = rest.split("—");
-        if (parts.length >= 2){
+        if (parts.length >= 2) {
           payload.cliente.distrito = norm(parts[0]);
           payload.cliente.direccion = norm(parts.slice(1).join("—"));
         } else {
@@ -637,28 +656,74 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
         }
         return;
       }
-      if (/^Referencia:/i.test(line)){ payload.cliente.referencia = norm(line.split(":")[1]); return; }
-      if (/^Google Maps:/i.test(line)){ payload.cliente.mapLink = norm(line.split(":")[1]); return; }
 
-      if (/^Delivery:/i.test(line)){ payload.delivery = solesToNum(line); return; }
-      if (/^Total a pagar:/i.test(line)){ payload.total = solesToNum(line); return; }
+      if (/^Referencia:/i.test(line))  { payload.cliente.referencia = norm(line.split(":")[1]); return; }
+      if (/^Google Maps:/i.test(line)) { payload.cliente.mapLink    = norm(line.split(":")[1]); return; }
+
+      // Totales
+      if (/^Delivery:/i.test(line))       { payload.delivery = solesToNum(line); return; }
+      if (/^Total a pagar:/i.test(line))  { payload.total    = solesToNum(line); return; }
     });
 
     return payload;
   }
 
-  const _open = window.open;
-  window.open = function(url, target, features){
-    try{
-      if (typeof url === "string" && url.includes("https://wa.me/") && url.includes("?text=")){
-        const q = url.split("?text=")[1] || "";
-        const decoded = decodeURIComponent(q.replace(/\+/g," "));
-        const payload = parseWhatsAppText(decoded);
-        if (payload && payload.items && payload.items.length){
-          sendPayload(payload);
-        }
+  // Detecta URLs de WhatsApp y dispara el envío al App Script
+  function maybeHandleWhatsAppUrl(url) {
+    try {
+      if (typeof url !== "string") return;
+
+      // Normalizar y extraer texto
+      let u;
+      try { u = new URL(url, location.href); } catch { u = null; }
+      const isWa = url.includes("https://wa.me/") || (u && u.hostname === "wa.me");
+
+      if (!isWa) return;
+
+      // Obtener el texto del mensaje
+      let raw = "";
+      if (u) {
+        raw = u.searchParams.get("text") || "";
+      } else {
+        const parts = url.split("?text=");
+        raw = parts[1] || "";
       }
-    }catch(e){ console.warn("WK hook error", e); }
+      if (!raw) return;
+
+      const decoded = decodeURIComponent(raw.replace(/\+/g, " "));
+      const payload = parseWhatsAppText(decoded);
+
+      if (payload && payload.items && payload.items.length) {
+        sendPayload(payload);
+      }
+    } catch (e) {
+      console.warn("WK hook parse error", e);
+    }
+  }
+
+  // Hook 1: window.open
+  const _open = window.open;
+  window.open = function (url, target, features) {
+    try { maybeHandleWhatsAppUrl(url); } catch {}
     return _open.apply(window, arguments);
+  };
+
+  // Hook 2: clicks en <a href="https://wa.me/...">
+  document.addEventListener("click", function (ev) {
+    const a = ev.target && ev.target.closest ? ev.target.closest("a[href]") : null;
+    if (!a) return;
+    maybeHandleWhatsAppUrl(a.getAttribute("href"));
+  }, true);
+
+  // Exponer helper manual por si quieres probar en consola:
+  window.WK_sendToSheetsFromWhatsappText = function (whatsText) {
+    const decoded = whatsText; // pásalo sin URL encoding
+    const payload = parseWhatsAppText(decoded);
+    if (payload && payload.items && payload.items.length) {
+      sendPayload(payload);
+      console.log("Enviado a Sheets:", payload);
+    } else {
+      console.warn("No se pudo parsear el texto.");
+    }
   };
 })();
