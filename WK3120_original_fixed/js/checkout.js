@@ -4,7 +4,7 @@ const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 
 // === Registro en Google Sheets ===
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyT6ie7aLa-fN0MQsNOVzTVNr6Al1D85ZKBbs6N0prxRy8C9YGmOsaAgGcd17kavmdiPw/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyl4cS_B2Pf5ghrV-8ZXN7Lv57GySRAW_mrmGO5qgfs-dfAFnVvDOkPPihyNQTT1IQtYw/exec';
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
 
