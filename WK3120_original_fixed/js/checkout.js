@@ -2,9 +2,9 @@ const {useState,useEffect}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
-
 // === Registro en Google Sheets ===
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyKH3gM6SodrlswjGWCDVol7CdeB7K54m-w-s0bI846j-D4g7GESrXl7n8GoPmFFB6tIQ/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw-PZRNL4fhLah236Vl0HumsLGqBWCqhgQ1pEZfNg_cLQ5KbrC-5QJRhTWsmyaf3xJ1MQ/exec';
+
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
 
@@ -493,7 +493,6 @@ function buildWhatsApp(cart,state,total){
   return encodeURIComponent(L.join("\n"));
 }
 
-
 /* ===== Registro Google Sheets (parche mínimo, sin tocar tu lógica) ===== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
@@ -512,13 +511,13 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
     },
     montos: {
       subtotal,
-      delivery: typeof DELIVERY !== 'undefined' ? DELIVERY : (state?.delivery || 0),
+      delivery: DELIVERY,
       total
     },
     pago: {
       metodo:  'Yape/Plin',
-      numero:  (typeof YAPE !== 'undefined' ? YAPE : state?.yape) || '',
-      titular: (typeof NOMBRE_TITULAR !== 'undefined' ? NOMBRE_TITULAR : state?.titular) || ''
+      numero:  YAPE,
+      titular: NOMBRE_TITULAR
     },
     items: (cart || []).map(it => ({
       name: it.name,
@@ -557,22 +556,7 @@ async function registrarPedidoGSheet(payload) {
     return false;
   }
 }
-    if (typeof fetch !== 'undefined') {
-      await fetch(SHEETS_WEBAPP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body
-      });
-    }
-    return true;
-  } catch (_e) {
-    return false;
-  }
-}
 /* ===== Fin parche Google Sheets ===== */
-
-
 
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
@@ -604,22 +588,18 @@ function App(){
     const text=buildWhatsApp(cart,effective,total);
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
-    
+
     // --- Parche: registrar en Google Sheets sin bloquear la UX ---
-    try {
+    try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
-        orderId,
-        cart: (typeof cart !== 'undefined' ? cart : (window.cart || [])),
-        state: (typeof effective !== 'undefined' ? effective : (typeof state !== 'undefined' ? state : {})),
-        subtotal: (typeof subtotal !== 'undefined' ? subtotal : 0),
-        total: (typeof total !== 'undefined' ? total : 0),
-        whatsAppText: (typeof text !== 'undefined' ? decodeURIComponent(text) : '')
+        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
       });
       registrarPedidoGSheet(payload);
-    } catch(_e) {}
+    }catch(_e){}
     // --- Fin parche ---
-window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
+
+    window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
