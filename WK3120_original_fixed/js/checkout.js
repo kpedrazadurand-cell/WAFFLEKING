@@ -2,7 +2,8 @@ const {useState,useEffect}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
-// === Registro en Google Sheets ===
+
+// === NUEVO: URL de tu Web App de Apps Script (con LOG robusto) ===
 const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw-PZRNL4fhLah236Vl0HumsLGqBWCqhgQ1pEZfNg_cLQ5KbrC-5QJRhTWsmyaf3xJ1MQ/exec';
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
@@ -78,19 +79,14 @@ function DatosEntrega({state,setState}){
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
   /* ========================= 📍 MI UBICACIÓN (ROBUSTO) =========================
-     - Reintenta con menor precisión si hay timeout
-     - Mensajes claros para iPhone/Android
-     - Reverse geocoding (Nominatim) para dirección legible
-     - Persiste como parte de Datos de entrega
+     (igual que tu versión; no se tocó tu lógica de compra/pago)
   ============================================================================== */
 
-  // Helper: promesa para getCurrentPosition
   function getPos(opts){
     return new Promise((resolve, reject)=>{
       navigator.geolocation.getCurrentPosition(resolve, reject, opts);
     });
   }
-  // Intenta alta precisión y reintenta con menor precisión si hay timeout
   async function obtenerPosicionRobusta(){
     try{
       return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
@@ -103,17 +99,14 @@ function DatosEntrega({state,setState}){
   }
 
   const handleUbicacion = async () => {
-    if (!('geolocation' in navigator)) {
-      toast('Tu navegador no soporta ubicación.');
-      return;
-    }
+    if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
     toast('Obteniendo ubicación…');
     try{
       const { coords } = await obtenerPosicionRobusta();
       const lat = coords.latitude, lng = coords.longitude;
       const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
 
-      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; // fallback
+      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       try{
         const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
         const res = await fetch(url, { headers: { 'Accept':'application/json' } });
@@ -131,7 +124,7 @@ function DatosEntrega({state,setState}){
           }
           if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
         }
-      }catch(_){ /* dejamos fallback */ }
+      }catch(_){}
 
       set('direccion', finalDireccion);
       set('mapLink', mapsURL);
@@ -493,7 +486,8 @@ function buildWhatsApp(cart,state,total){
   return encodeURIComponent(L.join("\n"));
 }
 
-/* ===== Registro Google Sheets (parche mínimo, sin tocar tu lógica) ===== */
+/* ==================== NUEVO (AÑADIDO): Helpers de registro en Sheets ==================== */
+// Construye el payload en español para Apps Script (no toca tu carrito/UX)
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
@@ -533,18 +527,18 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
   };
 }
 
+// Envía con sendBeacon (texto plano) y fallback x-www-form-urlencoded (sin CORS)
 async function registrarPedidoGSheet(payload) {
   try {
-    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now(); // evita caché/CDN
+    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now(); // evita caché
     const data = JSON.stringify(payload);
 
-    // 1) sendBeacon con string (text/plain) — suele llegar bien a Apps Script
-    if (navigator.sendBeacon) {
+    if (navigator.sendBeacon) {            // 1) sendBeacon: llega como text/plain
       const ok = navigator.sendBeacon(url, data);
       if (ok) return true;
     }
 
-    // 2) Fallback sin preflight: x-www-form-urlencoded (payload=...)
+    // 2) Fallback sin preflight: payload=... (application/x-www-form-urlencoded)
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -556,7 +550,7 @@ async function registrarPedidoGSheet(payload) {
     return false;
   }
 }
-/* ===== Fin parche Google Sheets ===== */
+/* ================== FIN NUEVO (AÑADIDO) ================== */
 
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
@@ -589,15 +583,20 @@ function App(){
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
-    // --- Parche: registrar en Google Sheets sin bloquear la UX ---
+    /* === NUEVO: registrar pedido en Google Sheets (no bloquea UX) === */
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
-        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
+        orderId,
+        cart,
+        state: effective,
+        subtotal,
+        total,
+        whatsAppText: decodeURIComponent(text)
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
-    // --- Fin parche ---
+    /* === FIN NUEVO === */
 
     window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
     try{
@@ -621,3 +620,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
