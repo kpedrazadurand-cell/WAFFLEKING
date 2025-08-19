@@ -4,7 +4,7 @@ const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 
 // === NUEVO: URL de tu Web App de Apps Script (con LOG robusto) ===
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw-PZRNL4fhLah236Vl0HumsLGqBWCqhgQ1pEZfNg_cLQ5KbrC-5QJRhTWsmyaf3xJ1MQ/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
@@ -492,6 +492,7 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
   return {
     orderId,
     cliente: {
+      dni: state?.dni || 0, // NUEVO: enviamos DNI si existe; si no, 0
       nombre: state?.nombre || '',
       telefono: state?.telefono || '',
       distrito: state?.distrito || '',
