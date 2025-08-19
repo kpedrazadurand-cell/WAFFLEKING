@@ -4,7 +4,7 @@ const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 
 // === Registro en Google Sheets ===
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxthLtJKfRy9eHQUe4vyhJmCbQeNcNlQHF4gvButqyJ-447ivpmwx_oQFMpx2mBLQTPcg/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyKH3gM6SodrlswjGWCDVol7CdeB7K54m-w-s0bI846j-D4g7GESrXl7n8GoPmFFB6tIQ/exec';
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
 
@@ -536,12 +536,27 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
 
 async function registrarPedidoGSheet(payload) {
   try {
-    const body = JSON.stringify(payload);
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/json' });
-      const ok = navigator.sendBeacon(SHEETS_WEBAPP_URL, blob);
+    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now(); // evita caché/CDN
+    const data = JSON.stringify(payload);
+
+    // 1) sendBeacon con string (text/plain) — suele llegar bien a Apps Script
+    if (navigator.sendBeacon) {
+      const ok = navigator.sendBeacon(url, data);
       if (ok) return true;
     }
+
+    // 2) Fallback sin preflight: x-www-form-urlencoded (payload=...)
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: 'payload=' + encodeURIComponent(data)
+    });
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
     if (typeof fetch !== 'undefined') {
       await fetch(SHEETS_WEBAPP_URL, {
         method: 'POST',
