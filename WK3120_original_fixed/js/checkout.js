@@ -674,27 +674,36 @@ function App(){
     return data.secure_url;
   }
 
+  // ================== SOLO CAMBIA ESTA FUNCIÓN ==================
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
-    // 1) Subir a Cloudinary AHORA
+    // 1) Pre-abrir pestaña para evitar bloqueo de pop-ups (solo desktop)
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const preWin = !isMobile ? window.open('', '_blank') : null;
+
+    // 2) Subir voucher ahora
     let voucherUrl = "";
     try{
       voucherUrl = await subirVoucherAhora(voucherFile);
     }catch(e){
       toast("Error al subir el voucher. Intenta de nuevo.");
+      if (preWin && !preWin.closed) preWin.close();
       return;
     }
 
-    // 2) Armar texto de WhatsApp con la URL final
+    // 3) Armar texto WhatsApp
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
     const text=buildWhatsApp(cart,effective,total,voucherUrl);
-    if(text===false){ toast("Completa los datos de entrega"); return; }
-    if(text===null){ toast("Carrito vacío"); return; }
+    if(text===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
+    if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
 
-    // 3) Registrar en Sheets (no bloquea UX)
+    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
+    const waApp = `whatsapp://send?phone=${WHA}&text=${text}`;
+
+    // 4) Registrar en Sheets (no bloquea)
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
@@ -708,30 +717,31 @@ function App(){
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
-    // 4) ABRIR WHATSAPP (fix para móviles)
-    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
-    const waApp = `whatsapp://send?phone=${WHA}&text=${text}`;
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
+    // 5) Abrir WhatsApp
     if (isMobile) {
-      // Intenta abrir la app; si no, cae al web
       window.location.href = waApp;
-      setTimeout(()=>{ window.location.href = waWeb; }, 800);
+      setTimeout(()=>{ window.location.href = waWeb; }, 1200);
     } else {
-      // Desktop: nueva pestaña al web
-      window.open(waWeb, "_blank");
+      if (preWin && !preWin.closed) {
+        preWin.location.href = waWeb;
+      } else {
+        window.open(waWeb, "_blank");
+      }
     }
 
-    // 5) Limpiar estados
+    // 6) Limpiar y redirigir con calma
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
       localStorage.setItem("wk_clear_delivery","1");
     }catch(e){}
+
     setVoucherFile(null);
     setVoucherPreview("");
-    setTimeout(()=>{ location.href='index.html'; }, 300);
+
+    setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
+  // ===============================================================
 
   const canSend = !!voucherFile;
 
@@ -760,5 +770,4 @@ function App(){
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
-
-                                                            
+                           
