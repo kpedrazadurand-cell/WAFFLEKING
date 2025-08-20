@@ -36,12 +36,36 @@ async function copyText(text,setCopied){
 }
 
 /* ===================== NUEVO: OCR Yape/Plin ===================== */
-// Carga Tesseract sólo si hace falta
+// Loader genérico por <script> como fallback
+function ensureScript(src, testFn){
+  return new Promise((resolve,reject)=>{
+    if (testFn && testFn()) return resolve();
+    const s=document.createElement('script');
+    s.src=src; s.async=true;
+    s.onload=()=> testFn && testFn() ? resolve() : reject(new Error('Script cargado pero la librería no está disponible'));
+    s.onerror=()=>reject(new Error('No se pudo cargar '+src));
+    document.head.appendChild(s);
+  });
+}
+
+// Carga Tesseract sólo si hace falta (dinámico + fallback)
 async function ensureTesseract(){
-  if(!window.Tesseract){
+  if (window.Tesseract) return;
+  try{
     await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
+  }catch(_){
+    await ensureScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js", ()=>!!window.Tesseract);
   }
 }
+
+// Detecta HEIC/HEIF (no soportado por el validador actual)
+function isHEIC(file){
+  if (!file) return false;
+  if (/image\/hei[cf]/i.test(file.type)) return true;
+  if (/\.(heic|heif)$/i.test(file.name||"")) return true;
+  return false;
+}
+
 /**
  * Valida que la imagen parezca un voucher de Yape/Plin.
  * Reglas: (Yape|Plin) + ≥1 señal adicional típica (monto, operación, “pago exitoso”…)
@@ -490,26 +514,42 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     const f=e.target.files?.[0];
     if(!f) return;
 
+    // Feedback inmediato
+    setError("Verificando…");
+
     // validación básica original (se conserva)
     const msg=validarArchivo(f);
     if(msg){ setError(msg); e.target.value=""; return; }
 
-    // validación OCR (Yape/Plin)
-    const res = await validarVoucher(f);
-    if(!res.ok){
-      setError(res.msg);
-      e.target.value = "";
-      onVoucherClear?.();
-      toast(res.msg);
-      return;
+    // Bloqueo HEIC/HEIF (no soportado en este flujo)
+    if (isHEIC(f)){
+      const m = "Formato HEIC/HEIF no soportado. Sube PNG, JPG/JPEG o WebP. En iPhone: Ajustes ▸ Cámara ▸ Formatos ▸ Más compatible.";
+      setError(m); toast(m); e.target.value=""; onVoucherClear?.(); return;
     }
 
-    setError("");
     try{
-      const objURL=URL.createObjectURL(f);
-      onVoucherSelect?.(f, objURL);
-      toast("Voucher verificado ✓");
-    }catch(_){}
+      // validación OCR (Yape/Plin)
+      const res = await validarVoucher(f);
+      if(!res.ok){
+        setError(res.msg);
+        e.target.value = "";
+        onVoucherClear?.();
+        toast(res.msg);
+        return;
+      }
+
+      setError("");
+      try{
+        const objURL=URL.createObjectURL(f);
+        onVoucherSelect?.(f, objURL);
+        toast("Voucher verificado ✓");
+      }catch(_){}
+    }catch(ex){
+      console.error(ex);
+      const m = "No se pudo verificar el voucher (OCR). Revisa tu conexión e inténtalo otra vez.";
+      setError(m); toast(m);
+      e.target.value=""; onVoucherClear?.();
+    }
   }
 
   const Logos = (
@@ -813,8 +853,12 @@ function App(){
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
     // Revalidación OCR por seguridad (por si manipulan el DOM)
-    const check = await validarVoucher(voucherFile);
-    if(!check.ok){ toast(check.msg); return; }
+    try{
+      const check = await validarVoucher(voucherFile);
+      if(!check.ok){ toast(check.msg); return; }
+    }catch(ex){
+      toast("No se pudo verificar el voucher (OCR)."); return;
+    }
 
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const preWin = !isMobile ? window.open('', '_blank') : null;
