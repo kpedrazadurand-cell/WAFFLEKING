@@ -489,17 +489,26 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
+        {/* ==== CAMBIO RESPONSIVO: apilado en móvil + botones full-width ==== */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
             <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
 
-          <div className="payment-actions flex flex-wrap gap-2">
-            <button onClick={()=>copyText(YAPE,setCopied)} className={"px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
+          <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
+            <button
+              onClick={()=>copyText(YAPE,setCopied)}
+              className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}
+            >
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button onClick={()=>setOpen(true)} className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition">Ver QR</button>
+            <button
+              onClick={()=>setOpen(true)}
+              className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition"
+            >
+              Ver QR
+            </button>
           </div>
         </div>
 
@@ -734,7 +743,7 @@ function App(){
     return data.secure_url;
   }
 
-  // enviar con anti-popup
+  // ====== ENVIAR (AJUSTADO: SOLO https PARA WHATSAPP) ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
@@ -758,7 +767,6 @@ function App(){
     if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
 
     const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
-    const waApp = `whatsapp://send?phone=${WHA}&text=${text}`;
 
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
@@ -769,8 +777,8 @@ function App(){
     }catch(_e){}
 
     if (isMobile) {
-      window.location.href = waApp;
-      setTimeout(()=>{ window.location.href = waWeb; }, 1200);
+      // Solo https para minimizar prompts del SO
+      window.location.href = waWeb;
     } else {
       if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
       else { window.open(waWeb, "_blank"); }
