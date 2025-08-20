@@ -1,6 +1,6 @@
 <!-- checkout.html usa este JS -->
 <script type="module">
-// ======= TU CHECKOUT COMPLETO (con fix de WhatsApp en móviles) =======
+// ======= TU CHECKOUT COMPLETO (fix pop-up + fix carrito robusto) =======
 const {useState,useEffect,useRef}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
@@ -332,7 +332,7 @@ function CartList({cart, setCart, canCalc}){
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
-  useEffect(()=>{ try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); } },[]);
+  // ⚠️ Quitamos el useEffect que recargaba desde localStorage para evitar pisar el estado
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -559,7 +559,6 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   }else{
     L.push("Voucher: (no adjuntado)");
   }
-  // Ya NO agregamos "ADJUNTAR CAPTURA..." como pediste
 
   return encodeURIComponent(L.join("\n"));
 }
@@ -631,6 +630,37 @@ function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
 
+  // --- helpers robustos para carrito ---
+  function safeParse(json, fallback){
+    try{
+      const data = JSON.parse(json);
+      if (Array.isArray(data)) return data;
+      return fallback;
+    }catch(_){ return fallback; }
+  }
+  function loadCartMulti(){
+    const a = safeParse(localStorage.getItem("wk_cart"), null);
+    if (a && a.length) return a;
+    const b = safeParse(localStorage.getItem("wk_cart_bkp"), null);
+    if (b && b.length) return b;
+    const c = safeParse(sessionStorage.getItem("wk_cart"), null);
+    if (c && c.length) return c;
+    return [];
+  }
+
+  // ===== Estado del carrito usando el loader robusto =====
+  const [cart,setCart]=useState(() => loadCartMulti());
+
+  // Sincroniza SIEMPRE a ls + ss + bkp cuando cambie
+  useEffect(()=>{
+    try{
+      const json = JSON.stringify(cart);
+      localStorage.setItem("wk_cart", json);
+      localStorage.setItem("wk_cart_bkp", json);      // backup
+      sessionStorage.setItem("wk_cart", json);        // copia por pestaña
+    }catch(_){}
+  }, [cart]);
+
   // Voucher (selección local hasta enviar)
   const [voucherFile, setVoucherFile] = useState(null);
   const [voucherPreview, setVoucherPreview] = useState("");
@@ -647,8 +677,6 @@ function App(){
     location.href='index.html';
   }
 
-  const [cart,setCart]=useState(()=>{ try{ return JSON.parse(localStorage.getItem("wk_cart")||"[]"); }catch(e){ return []; } });
-  useEffect(()=>{ try{ localStorage.setItem("wk_cart", JSON.stringify(cart)); }catch(e){} }, [cart]);
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -674,7 +702,7 @@ function App(){
     return data.secure_url;
   }
 
-  // ================== SOLO CAMBIA ESTA FUNCIÓN ==================
+  // ================== enviar() con anti popup-blocker ==================
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
@@ -734,6 +762,7 @@ function App(){
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
       localStorage.setItem("wk_clear_delivery","1");
+      sessionStorage.removeItem("wk_cart");
     }catch(e){}
 
     setVoucherFile(null);
@@ -741,7 +770,6 @@ function App(){
 
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
-  // ===============================================================
 
   const canSend = !!voucherFile;
 
@@ -770,4 +798,3 @@ function App(){
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
-                           
