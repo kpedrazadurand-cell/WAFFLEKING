@@ -1,15 +1,9 @@
-const {useState,useEffect}=React;
-const LOGO="assets/logo.png";
-const QR="assets/yape-qr.png";
-const ICON_YAPE="assets/yape.png";   // nuevo: icono
-const ICON_PLIN="assets/plin.png";   // nuevo: icono
+const {useState,useEffect,useRef}=React;
+const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
+const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
+const WHA="51957285316";const DELIVERY=7;
 
-const YAPE="957285316";
-const NOMBRE_TITULAR="Kevin R. Pedraza D.";
-const WHA="51957285316";
-const DELIVERY=7;
-
-// === Cloudinary (unsigned) ===
+// === Config Cloudinary (unsigned) ===
 const CLOUDINARY_CLOUD = "dw35nct1h";
 const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
@@ -83,66 +77,41 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  function getPos(opts){
-    return new Promise((resolve, reject)=>{
-      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
-    });
-  }
+  function getPos(opts){return new Promise((resolve,reject)=>{navigator.geolocation.getCurrentPosition(resolve,reject,opts);});}
   async function obtenerPosicionRobusta(){
-    try{
-      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
-    }catch(e){
-      if(e && e.code===3){
-        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
-      }
-      throw e;
-    }
+    try{ return await getPos({enableHighAccuracy:true,timeout:8000,maximumAge:0}); }
+    catch(e){ if(e&&e.code===3){ return await getPos({enableHighAccuracy:false,timeout:8000,maximumAge:60000}); } throw e; }
   }
-
-  const handleUbicacion = async () => {
-    if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
+  const handleUbicacion=async()=>{
+    if(!('geolocation'in navigator)){ toast('Tu navegador no soporta ubicación.'); return; }
     toast('Obteniendo ubicación…');
     try{
-      const { coords } = await obtenerPosicionRobusta();
-      const lat = coords.latitude, lng = coords.longitude;
-      const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
-
-      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const {coords}=await obtenerPosicionRobusta(); const lat=coords.latitude,lng=coords.longitude;
+      const mapsURL=`https://www.google.com/maps?q=${lat},${lng}`;
+      let finalDireccion=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       try{
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-        const res = await fetch(url, { headers: { 'Accept':'application/json' } });
-        const data = await res.json();
+        const url=`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
+        const res=await fetch(url,{headers:{'Accept':'application/json'}}); const data=await res.json();
         if(data){
-          if (data.address){
-            const a = data.address;
-            const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-            const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
-            const ciudad = (a.city || a.town || a.village || a.county || '').trim();
-            const region = (a.state || '').trim();
-            const cp     = (a.postcode || '').trim();
-            const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
-            if (partes.length) finalDireccion = partes.join(', ');
+          if(data.address){
+            const a=data.address;
+            const linea1=[a.road,a.house_number].filter(Boolean).join(' ').trim();
+            const zona=(a.neighbourhood||a.suburb||a.city_district||'').trim();
+            const ciudad=(a.city||a.town||a.village||a.county||'').trim();
+            const region=(a.state||'').trim(); const cp=(a.postcode||'').trim();
+            const partes=[linea1,zona,ciudad,region,cp].filter(Boolean);
+            if(partes.length) finalDireccion=partes.join(', ');
           }
-          if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
+          if(!finalDireccion && data.display_name) finalDireccion=data.display_name;
         }
       }catch(_){}
-
-      set('direccion', finalDireccion);
-      set('mapLink', mapsURL);
-      toast('Ubicación detectada ✓');
+      set('direccion',finalDireccion); set('mapLink',mapsURL); toast('Ubicación detectada ✓');
     }catch(err){
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (err && err.code === 1) {
-        toast(isIOS
-          ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
-          : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
-      } else if (err && err.code === 2) {
-        toast('Posición no disponible. Activa GPS o prueba en exterior.');
-      } else if (err && err.code === 3) {
-        toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
-      } else {
-        toast('Error de ubicación. Intenta de nuevo.');
-      }
+      const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+      if(err&&err.code===1){ toast(isIOS?'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.':'Permiso denegado. Revisa los permisos de ubicación del navegador.'); }
+      else if(err&&err.code===2){ toast('Posición no disponible. Activa GPS o prueba en exterior.'); }
+      else if(err&&err.code===3){ toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.'); }
+      else{ toast('Error de ubicación. Intenta de nuevo.'); }
     }
   };
 
@@ -159,19 +128,13 @@ function DatosEntrega({state,setState}){
               {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-
           <div>
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
-              <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)}
-                placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
-              <button type="button" onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">
-                📍 Mi ubicación
-              </button>
+              <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)} placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
+              <button type="button" onClick={handleUbicacion} className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">📍 Mi ubicación</button>
             </div>
           </div>
-
           <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div className="grid grid-cols-2 gap-2">
@@ -310,9 +273,9 @@ function EditModal({item, onClose, onSave}){
                   <div className="flex items-center justify-between">
                     <div><div className="font-medium">{p.name}</div><div className="text-xs text-slate-600">+ S/ {p.price.toFixed(2)} c/u</div></div>
                     <div className="flex items-center gap-2">
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
-                      <span className="w-8 text-center">{prem[p.id]||0}</span>
                       <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,1)}>+</button>
+                      <span className="w-8 text-center">{prem[p.id]||0}</span>
+                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
                     </div>
                   </div>
                 </div>
@@ -357,41 +320,36 @@ function CartList({cart, setCart, canCalc}){
         </div>
 
         {cart.length===0 ? <p className="text-sm text-slate-600">Tu carrito está vacío.</p> :
-          <ul className="space-y-3">{cart.map((it,i)=>{
-            return (
-              <li key={i} className="rounded-xl border border-slate-200 p-3 bg-white">
-                <div className="sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
-                  <div className="flex items-center justify-between sm:block sm:col-span-8">
-                    <div className="font-semibold text-sm">{it.name} <span className="text-slate-500">× {it.qty}</span></div>
-                    <div className="text-sm sm:hidden">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                  </div>
-                  <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                  <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
-                    <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
-                    <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
-                  </div>
+          <ul className="space-y-3">{cart.map((it,i)=>(
+            <li key={i} className="rounded-xl border border-slate-200 p-3 bg-white">
+              <div className="sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                <div className="flex items-center justify-between sm:block sm:col-span-8">
+                  <div className="font-semibold text-sm">{it.name} <span className="text-slate-500">× {it.qty}</span></div>
+                  <div className="text-sm sm:hidden">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
                 </div>
+                <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
+                <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
+                  <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
+                  <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
+                </div>
+              </div>
 
-                {openAll && (<div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
-                  <div><div className="font-semibold">Toppings</div><div>{(it.toppings&&it.toppings.length)?it.toppings.join(", "):"—"}</div></div>
-                  <div><div className="font-semibold">Siropes</div><div>{(it.siropes&&it.siropes.length)?it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "):"—"}</div></div>
-                  <div><div className="font-semibold">Premium</div><div>{(it.premium&&it.premium.length)?it.premium.map(p=>`${p.name} x${p.qty}`).join(", "):"—"}</div></div>
-                  <div className="sm:col-span-3"><div className="font-semibold">Dedicatoria</div>
-                    <div>{it.recipient ? ("Para: "+it.recipient) : "—"}</div>
-                    {it.notes && <div className="mt-0.5">{it.notes}</div>}
-                  </div>
-                </div>)}
-              </li>
-            );
-          })}</ul>
+              {openAll && (<div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
+                <div><div className="font-semibold">Toppings</div><div>{(it.toppings&&it.toppings.length)?it.toppings.join(", "):"—"}</div></div>
+                <div><div className="font-semibold">Siropes</div><div>{(it.siropes&&it.siropes.length)?it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "):"—"}</div></div>
+                <div><div className="font-semibold">Premium</div><div>{(it.premium&&it.premium.length)?it.premium.map(p=>`${p.name} x${p.qty}`).join(", "):"—"}</div></div>
+                <div className="sm:col-span-3"><div className="font-semibold">Dedicatoria</div>
+                  <div>{it.recipient ? ("Para: "+it.recipient) : "—"}</div>
+                  {it.notes && <div className="mt-0.5">{it.notes}</div>}
+                </div>
+              </div>)}
+            </li>
+          ))}</ul>
         }
 
         <div className="mt-3 text-right text-sm">Subtotal: <b>{soles(subtotal)}</b></div>
         {cart.length>0 && (canCalc
-          ? (<>
-               <div className="text-right text-sm">Delivery: <b>{soles(DELIVERY)}</b></div>
-               <div className="text-right font-bold">Total: {soles(total)}</div>
-             </>)
+          ? (<><div className="text-right text-sm">Delivery: <b>{soles(DELIVERY)}</b></div><div className="text-right font-bold">Total: {soles(total)}</div></>)
           : (<div className="text-right text-xs text-slate-600">Completa los datos de entrega para calcular el total con delivery.</div>)
         )}
       </div>
@@ -401,14 +359,18 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
+/* === PAYMENT BOX con preview + cambiar + quitar === */
 function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [error,setError]=useState("");
-  const [preview, setPreview] = useState(""); // preview local
+  const [preview,setPreview]=useState(""); // url para miniatura
+  const fileRef=useRef(null);
 
-  const inputRef = React.useRef(null);
+  // si viene una url previa del localStorage, úsala como preview inicial
+  useEffect(()=>{ setPreview(paymentUrl||""); },[paymentUrl]);
+
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
   function validarArchivo(f){
@@ -418,14 +380,25 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
     return "";
   }
 
-  async function handleFileSelected(file, resetInputCb){
+  function abrirPicker(){ fileRef.current?.click(); }
+
+  function limpiarVoucher(){
+    setPreview("");
     setError("");
+    onVoucherChange?.("");
+    if (fileRef.current) fileRef.current.value="";
+  }
+
+  async function handleUploadFromInput(file){
     const msg=validarArchivo(file);
     if(msg){ setError(msg); return; }
 
-    // preview inmediato
-    const localUrl = URL.createObjectURL(file);
-    setPreview(localUrl);
+    // preview inmediata (local) mientras sube
+    try{
+      const objURL=URL.createObjectURL(file);
+      setPreview(objURL);
+      setError("");
+    }catch(_){}
 
     setUploading(true);
     try{
@@ -438,114 +411,94 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
       const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
       const data = await res.json();
       if(data && data.secure_url){
+        setPreview(data.secure_url);
         onVoucherChange?.(data.secure_url);
-        setError("");
         toast("Voucher subido ✔");
       }else{
         setError("No se pudo subir la imagen. Intenta nuevamente.");
-        setPreview("");
+        setPreview(""); onVoucherChange?.("");
       }
     }catch(_e){
       setError("Error al subir. Revisa tu conexión.");
-      setPreview("");
+      setPreview(""); onVoucherChange?.("");
     }finally{
       setUploading(false);
-      resetInputCb?.();
+      if (fileRef.current) fileRef.current.value="";
     }
   }
 
-  function onInputChange(e){
+  async function handleChange(e){
     const f=e.target.files?.[0];
     if(!f) return;
-    handleFileSelected(f, ()=>{ e.target.value=""; }); // permite volver a elegir el mismo archivo
-  }
-
-  function cambiarVoucher(){
-    // Limpia estado y vuelve a abrir selector
-    setPreview("");
-    setError("");
-    onVoucherChange?.("");
-    inputRef.current?.click();
+    await handleUploadFromInput(f);
   }
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl border border-amber-100 p-4 shadow-soft bg-gradient-to-br from-amber-50/70 to-yellow-50/60">
+      <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h4 className="font-semibold mb-1">Forma de pago</h4>
-            <div className="text-sm leading-6">
-              <div><span className="font-medium">Número Yape/Plin:</span> {fmt}</div>
-              <div><span className="font-medium">Nombre:</span> {NOMBRE_TITULAR}</div>
+          <div className="flex items-center gap-3">
+            {/* === AQUÍ VAN LAS IMÁGENES (en lugar de los circulitos) === */}
+            <div className="flex -space-x-2">
+              <img src="assets/yape.png" alt="Yape" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"/>
+              <img src="assets/plin.png" alt="Plin" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"/>
             </div>
+            <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={()=>copyText(YAPE,setCopied)} className={"btn-pill border "+(copied?"bg-amber-600 text-white":"border-amber-300 hover:bg-amber-50 text-amber-800")}>
+
+          <div className="payment-actions flex flex-wrap gap-2">
+            <button onClick={()=>copyText(YAPE,setCopied)} className={"px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button onClick={()=>setOpen(true)} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">Ver QR</button>
+            <button onClick={()=>setOpen(true)} className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition">Ver QR</button>
           </div>
         </div>
 
-        {canCalc && <div className="mt-2 text-sm"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
+        <div className="mt-3 text-sm leading-6 text-slate-700">
+          <div><span className="font-medium">Número Yape/Plin:</span> {fmt}</div>
+          <div><span className="font-medium">Nombre:</span> {NOMBRE_TITULAR}</div>
+          {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
+          <div className="text-[12px] mt-1"><strong>Adjunta la captura del pago (Yape/Plin)</strong></div>
+        </div>
 
-        {/* Tarjetita uploader */}
-        <div className="mt-3 rounded-xl border border-amber-200 bg-white/80 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img src={ICON_YAPE} alt="Yape" className="w-8 h-8 rounded-md object-contain"/>
-              <img src={ICON_PLIN} alt="Plin" className="w-8 h-8 rounded-md object-contain"/>
-              <div className="text-[12px] sm:text-sm text-slate-700">
-                <strong>Sube tu comprobante</strong><span className="hidden sm:inline"> (Yape/Plin)</span>
-              </div>
-            </div>
+        {/* Subida + preview */}
+        <div className="mt-3">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
-            {/* Botón seleccionar/cambiar */}
-            <div className="flex items-center gap-2">
-              {!paymentUrl
-                ? <button type="button" onClick={()=>inputRef.current?.click()} className="btn-pill bg-amber-600 hover:bg-amber-700 text-white">
-                    Subir voucher
-                  </button>
-                : <button type="button" onClick={cambiarVoucher} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">
-                    Cambiar voucher
-                  </button>
-              }
-            </div>
-          </div>
-
-          {/* Input oculto */}
-          <input ref={inputRef} type="file" accept="image/*" onChange={onInputChange} hidden />
-
-          {/* Mensajes de estado */}
-          {(uploading) && <div className="text-xs text-slate-600 mt-2">Subiendo imagen…</div>}
-          {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
-
-          {/* Preview */}
-          {(preview || paymentUrl) && (
-            <div className="mt-3 flex items-center gap-3">
-              <a href={paymentUrl || preview} target="_blank" rel="noreferrer" className="block">
-                <img src={paymentUrl || preview} className="w-28 h-28 object-cover rounded-lg ring-1 ring-amber-200" alt="Voucher"/>
+          {!preview ? (
+            <button onClick={abrirPicker} disabled={uploading}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition disabled:opacity-60">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
+              {uploading? "Subiendo…" : "Subir voucher"}
+            </button>
+          ) : (
+            <div className="flex items-start gap-3">
+              <a href={preview} target="_blank" rel="noreferrer"
+                 className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
+                <img src={preview} alt="voucher" className="h-24 w-24 object-cover"/>
               </a>
-              <div className="text-xs text-slate-600">
-                {paymentUrl ? "Voucher subido ✔" : "Vista previa (aún subiendo…)"}
-                <div className="mt-1">
-                  <button type="button" onClick={cambiarVoucher} className="text-amber-700 underline decoration-amber-300 hover:decoration-amber-600">
-                    {paymentUrl ? "Subir otro" : "Elegir otro"}
-                  </button>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-amber-900">Voucher cargado</div>
+                <div className="flex gap-2">
+                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
+                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
                 </div>
+                <a href={preview} target="_blank" rel="noreferrer" className="text-xs underline text-amber-800 break-all">Ver en nueva pestaña</a>
               </div>
             </div>
           )}
-        </div>
 
-        {open && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
-          <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
-            <div className="text-center font-semibold mb-3">QR de Yape</div>
-            <img src={QR} className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
-            <button onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
-          </div>
-        </div>)}
+          {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
+        </div>
       </div>
+
+      {open && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
+        <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
+          <div className="text-center font-semibold mb-3">QR de Yape</div>
+          <img src={QR} className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
+          <button onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
+        </div>
+      </div>)}
     </section>
   );
 }
@@ -556,11 +509,11 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   if(!nombre || !telefono || telefono.length!==9 || !distrito || !direccion){ return false; }
 
-  const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
-  const mapsAuto = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
-  const mapsURL = (mapLink && mapLink.trim().length>0) ? mapLink.trim() : mapsAuto;
+  const addressForMaps=[direccion,distrito].filter(Boolean).join(", ");
+  const mapsAuto="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addressForMaps);
+  const mapsURL=(mapLink&&mapLink.trim().length>0)?mapLink.trim():mapsAuto;
 
-  const telFmt = `+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
+  const telFmt=`+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
 
   L.push("Waffle King — Pedido");
   if(fecha||hora){L.push("");L.push(`Fecha de entrega: ${fecha||"-"}`);L.push(`Hora: ${hora||"-"}`)};L.push("");
@@ -578,17 +531,14 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   L.push("Google Maps: "+mapsURL);
   L.push("");L.push("Delivery: "+soles(DELIVERY));L.push("Total a pagar: "+soles(total));
   L.push("Forma de pago: Yape/Plin "+YAPE+" — Nombre: "+NOMBRE_TITULAR);
-  if(voucherUrl && voucherUrl.trim().length>0){
-    L.push("Voucher: "+voucherUrl.trim());
-  }else{
-    L.push("Voucher: (no adjuntado)");
-  }
-  // (eliminado el texto extra de “ADJUNTAR CAPTURA ...”)
+  if(voucherUrl && voucherUrl.trim().length>0){ L.push("Voucher: "+voucherUrl.trim()); }
+  else{ L.push("Voucher: (no adjuntado)"); }
+  L.push("ADJUNTAR CAPTURA DE PAGO CON YAPE.");
 
   return encodeURIComponent(L.join("\n"));
 }
 
-// ==== Helpers a Sheets (se mantienen tal cual) ====
+/* Helpers (Sheets) */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
@@ -601,104 +551,56 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       referencia: state?.referencia || '',
       mapLink: state?.mapLink || ''
     },
-    programado: {
-      fecha: state?.fecha || '',
-      hora:  state?.hora  || ''
-    },
-    montos: {
-      subtotal,
-      delivery: DELIVERY,
-      total
-    },
-    pago: {
-      metodo:  'Yape/Plin',
-      numero:  YAPE,
-      titular: NOMBRE_TITULAR
-    },
-    items: (cart || []).map(it => ({
-      name: it.name,
-      qty: Number(it.qty || 0),
-      unitPrice: Number(it.unitPrice || 0),
-      toppings: it.toppings || [],
-      siropes:  it.siropes  || [],
-      premium:  it.premium  || [],
-      recipient: it.recipient || '',
-      notes: it.notes || ''
+    programado: { fecha: state?.fecha || '', hora: state?.hora  || '' },
+    montos: { subtotal, delivery: DELIVERY, total },
+    pago: { metodo:'Yape/Plin', numero:YAPE, titular:NOMBRE_TITULAR },
+    items: (cart||[]).map(it=>({
+      name: it.name, qty: Number(it.qty||0), unitPrice: Number(it.unitPrice||0),
+      toppings: it.toppings||[], siropes: it.siropes||[], premium: it.premium||[],
+      recipient: it.recipient||'', notes: it.notes||''
     })),
     whatsAppText
   };
 }
-
-async function registrarPedidoGSheet(payload) {
-  try {
-    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
-    const data = JSON.stringify(payload);
-
-    if (navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(url, data);
-      if (ok) return true;
-    }
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: 'payload=' + encodeURIComponent(data)
-    });
+async function registrarPedidoGSheet(payload){
+  try{
+    const url=SHEETS_WEBAPP_URL+'?t='+Date.now();
+    const data=JSON.stringify(payload);
+    if(navigator.sendBeacon){ const ok=navigator.sendBeacon(url,data); if(ok) return true; }
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'payload='+encodeURIComponent(data)});
     return true;
-  } catch (_e) {
-    return false;
-  }
+  }catch(_e){ return false; }
 }
-// ==== FIN Helpers ====
 
 function App(){
-  const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
+  const savedDelivery=(()=>{try{return JSON.parse(localStorage.getItem('wk_delivery')||'{}');}catch(e){return {};}})();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
 
-  // Persistencia del voucher validado
-  const [paymentUrl, setPaymentUrl] = useState(()=>{ try{ return localStorage.getItem('wk_voucher_url') || ""; }catch(e){ return ""; } });
-  useEffect(()=>{ try{
-    if(paymentUrl){ localStorage.setItem('wk_voucher_url', paymentUrl); }
-    else{ localStorage.removeItem('wk_voucher_url'); }
-  }catch(e){} }, [paymentUrl]);
+  const [paymentUrl,setPaymentUrl]=useState(()=>{try{return localStorage.getItem('wk_voucher_url')||"";}catch(e){return "";}});
+  useEffect(()=>{try{ if(paymentUrl){localStorage.setItem('wk_voucher_url',paymentUrl);} else{localStorage.removeItem('wk_voucher_url');} }catch(e){}},[paymentUrl]);
 
-  useEffect(()=>{
-    const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
-    window.addEventListener('beforeunload', handler);
-    return ()=>window.removeEventListener('beforeunload', handler);
-  },[state]);
+  useEffect(()=>{ const handler=()=>{ try{ localStorage.setItem('wk_delivery',JSON.stringify(state)); }catch(e){} }; window.addEventListener('beforeunload',handler); return ()=>window.removeEventListener('beforeunload',handler); },[state]);
 
-  function seguirComprando(){
-    try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
-    location.href='index.html';
-  }
+  function seguirComprando(){ try{ localStorage.setItem('wk_delivery',JSON.stringify(state)); }catch(e){} location.href='index.html'; }
 
   const [cart,setCart]=useState(()=>{ try{ return JSON.parse(localStorage.getItem("wk_cart")||"[]"); }catch(e){ return []; } });
   useEffect(()=>{ try{ localStorage.setItem("wk_cart", JSON.stringify(cart)); }catch(e){} }, [cart]);
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const canCalc = !!(state.distrito && state.direccion);
-  const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
+  const canCalc=!!(state.distrito&&state.direccion);
+  const total=canCalc&&cart.length>0?subtotal+DELIVERY:subtotal;
 
   function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!paymentUrl){ toast("Sube la captura del pago (voucher)"); return; }
 
-    let effective = state;
-    try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
+    let effective=state; try{ const saved=JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective={...saved,...state}; }catch(e){}
     const text=buildWhatsApp(cart,effective,total,paymentUrl);
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
     try{
-      const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
-      const payload = buildOrderPayloadForSheets({
-        orderId,
-        cart,
-        state: effective,
-        subtotal,
-        total,
-        whatsAppText: decodeURIComponent(text)
-      });
+      const orderId='WK-'+Date.now().toString(36).toUpperCase();
+      const payload=buildOrderPayloadForSheets({orderId,cart,state:effective,subtotal,total,whatsAppText:decodeURIComponent(text)});
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
@@ -709,10 +611,10 @@ function App(){
       localStorage.removeItem("wk_voucher_url");
       localStorage.setItem("wk_clear_delivery","1");
     }catch(e){}
-    setTimeout(()=>{ location.href='index.html'; }, 300);
+    setTimeout(()=>{ location.href='index.html'; },300);
   }
 
-  const canSend = !!paymentUrl;
+  const canSend=!!paymentUrl;
 
   return (<div>
     <HeaderMini onSeguir={seguirComprando}/>
@@ -720,11 +622,8 @@ function App(){
     <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
     <PaymentBox total={total} canCalc={canCalc} onVoucherChange={setPaymentUrl} paymentUrl={paymentUrl}/>
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-      <button onClick={enviar}
-        disabled={!canSend}
-        className={"w-full btn-pill text-white "+(canSend
-          ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800"
-          : "btn-disabled bg-amber-400")}
+      <button onClick={enviar} disabled={!canSend}
+        className={"w-full btn-pill text-white "+(canSend?"bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800":"btn-disabled bg-amber-400")}
         aria-disabled={!canSend}>
         Enviar pedido por WhatsApp
       </button>
@@ -732,3 +631,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
