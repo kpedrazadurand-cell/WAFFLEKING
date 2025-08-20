@@ -29,14 +29,9 @@ function HeaderMini({onSeguir}){
     <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
         <img src={LOGO} className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain"/>
-        <div className="leading-4">
-          <h1 className="font-extrabold text-base">Waffle King</h1>
-          <p className="text-xs text-slate-700">Confirmación y pago</p>
-        </div>
+        <div className="leading-4"><h1 className="font-extrabold text-base">Waffle King</h1><p className="text-xs text-slate-700">Confirmación y pago</p></div>
         <div className="ml-auto">
-          <button onClick={onSeguir} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">
-            Seguir comprando
-          </button>
+          <button onClick={onSeguir} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">Seguir comprando</button>
         </div>
       </div>
     </div>
@@ -64,8 +59,6 @@ function PhoneInput({value,onChange}){
 
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
-/* ======================= DATOS DE ENTREGA ======================= */
-/* Cambiado el orden: Dirección -> Distrito */
 function DatosEntrega({state,setState}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
@@ -152,61 +145,35 @@ function DatosEntrega({state,setState}){
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <h3 className="font-semibold mb-2">Datos de entrega</h3>
         <div className="space-y-2">
-          <div>
-            <label className="text-sm font-medium">Nombre</label>
-            <input value={nombre||""} onChange={e=>set('nombre',e.target.value)}
-              placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-          </div>
-
+          <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
 
-          {/* Primero DIRECCIÓN */}
+          {/* 👉 Dirección PRIMERO */}
           <div>
             <label className="text-sm font-medium">Dirección</label>
-            <div className="mt-1 flex gap-2 items-start mobile:flex-col mobile:gap-2">
+            <div className="mt-1 flex gap-2">
               <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
               <button type="button" onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm"
-                title="Usar mi ubicación actual">
+                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">
                 📍 Mi ubicación
               </button>
             </div>
           </div>
 
-          {/* Luego DISTRITO */}
-          <div>
-            <label className="text-sm font-medium">Distrito</label>
-            <select value={distrito||""} onChange={e=>set('distrito',e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2">
+          {/* 👉 Distrito DESPUÉS */}
+          <div><label className="text-sm font-medium">Distrito</label>
+            <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
               <option value="">Selecciona distrito</option>
               {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Referencia</label>
-            <input value={referencia||""} onChange={e=>set('referencia',e.target.value)}
-              placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Link de Google Maps (opcional)</label>
-            <input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)}
-              placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mobile:grid-cols-1">
-            <div>
-              <label className="text-sm font-medium">Fecha de entrega</label>
-              <input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Hora</label>
-              <input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-            </div>
+          <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+          <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><label className="text-sm font-medium">Fecha de entrega</label><input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+            <div><label className="text-sm font-medium">Hora</label><input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           </div>
         </div>
       </div>
@@ -214,7 +181,6 @@ function DatosEntrega({state,setState}){
   );
 }
 
-/* ======================= Menú / carrito ======================= */
 const PACKS=[
  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
@@ -465,14 +431,12 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     const msg=validarArchivo(f);
     if(msg){ setError(msg); e.target.value=""; return; }
     setError("");
-
     try{
       const objURL=URL.createObjectURL(f);
       onVoucherSelect?.(f, objURL);
     }catch(_){}
   }
 
-  // Logos con fallbacks
   const Logos = (
     <div className="payment-logos flex items-center gap-2">
       <img
@@ -503,22 +467,18 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        {/* Cabecera responsive: logos + título y acciones apiladas en móvil */}
-        <div className="flex items-start justify-between gap-3 mobile:flex-col">
+        {/* Header responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
             <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
 
-          <div className="payment-actions flex flex-wrap gap-2 mobile:w-full">
-            <button onClick={()=>copyText(YAPE,setCopied)}
-              className={"px-3 py-2 rounded-full border text-sm transition mobile:flex-1 "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
+          <div className="payment-actions flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button onClick={()=>copyText(YAPE,setCopied)} className={"px-3 py-2 rounded-full border text-sm transition w-full sm:w-auto "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button onClick={()=>setOpen(true)}
-              className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition mobile:flex-1">
-              Ver QR
-            </button>
+            <button onClick={()=>setOpen(true)} className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition w-full sm:w-auto">Ver QR</button>
           </div>
         </div>
 
@@ -534,27 +494,21 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 
           {!voucherPreview ? (
             <button onClick={abrirPicker}
-              className="inline-flex w-full mobile:w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition w-full sm:w-auto">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
               Subir voucher
             </button>
           ) : (
-            <div className="flex items-start gap-3 mobile:flex-col">
+            <div className="flex flex-col sm:flex-row items-start gap-3">
               <a href={voucherPreview} target="_blank" rel="noreferrer"
                  className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
                 <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
               </a>
-              <div className="flex flex-col gap-2 mobile:w-full">
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
                 <div className="text-xs text-amber-900">Voucher seleccionado</div>
-                <div className="flex gap-2 mobile:flex-col">
-                  <button onClick={abrirPicker}
-                    className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50 mobile:w-full">
-                    Cambiar imagen
-                  </button>
-                  <button onClick={limpiarVoucher}
-                    className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50 mobile:w-full">
-                    Quitar
-                  </button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50 w-full sm:w-auto">Cambiar imagen</button>
+                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50 w-full sm:w-auto">Quitar</button>
                 </div>
                 <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
               </div>
@@ -610,8 +564,6 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   }else{
     L.push("Voucher: (no adjuntado)");
   }
-  // Ya NO agrego "ADJUNTAR CAPTURA DE PAGO..."
-
   return encodeURIComponent(L.join("\n"));
 }
 
@@ -686,7 +638,6 @@ function App(){
   const [voucherFile, setVoucherFile] = useState(null);
   const [voucherPreview, setVoucherPreview] = useState("");
 
-  // Guardado extra por si el usuario cierra pestaña muy rápido
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
     window.addEventListener('beforeunload', handler);
@@ -729,7 +680,6 @@ function App(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
-    // 1) Subir a Cloudinary AHORA
     let voucherUrl = "";
     try{
       voucherUrl = await subirVoucherAhora(voucherFile);
@@ -738,14 +688,12 @@ function App(){
       return;
     }
 
-    // 2) Armar texto de WhatsApp con la URL final
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
     const text=buildWhatsApp(cart,effective,total,voucherUrl);
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
-    // 3) Registrar en Sheets (no bloquea UX)
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
@@ -759,10 +707,8 @@ function App(){
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
-    // 4) Enviar a WhatsApp
     window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
 
-    // 5) Limpiar estados
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
@@ -773,7 +719,6 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 300);
   }
 
-  // Habilitamos enviar solo si hay voucher seleccionado
   const canSend = !!voucherFile;
 
   return (<div>
