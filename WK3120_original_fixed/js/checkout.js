@@ -1,3 +1,6 @@
+<!-- checkout.html usa este JS -->
+<script type="module">
+// ======= TU CHECKOUT COMPLETO (con fix de WhatsApp en móviles) =======
 const {useState,useEffect,useRef}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
@@ -78,19 +81,11 @@ function DatosEntrega({state,setState}){
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
   function getPos(opts){
-    return new Promise((resolve, reject)=>{
-      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
-    });
+    return new Promise((resolve, reject)=>{ navigator.geolocation.getCurrentPosition(resolve, reject, opts); });
   }
   async function obtenerPosicionRobusta(){
-    try{
-      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
-    }catch(e){
-      if(e && e.code===3){
-        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
-      }
-      throw e;
-    }
+    try{ return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
+    catch(e){ if(e && e.code===3){ return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } throw e; }
   }
 
   const handleUbicacion = async () => {
@@ -148,7 +143,7 @@ function DatosEntrega({state,setState}){
           <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
 
-          {/* 👉 Dirección PRIMERO */}
+          {/* Dirección primero, luego Distrito (como pediste) */}
           <div>
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
@@ -161,7 +156,6 @@ function DatosEntrega({state,setState}){
             </div>
           </div>
 
-          {/* 👉 Distrito DESPUÉS */}
           <div><label className="text-sm font-medium">Distrito</label>
             <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
               <option value="">Selecciona distrito</option>
@@ -171,7 +165,7 @@ function DatosEntrega({state,setState}){
 
           <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div><label className="text-sm font-medium">Fecha de entrega</label><input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
             <div><label className="text-sm font-medium">Hora</label><input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           </div>
@@ -431,6 +425,8 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     const msg=validarArchivo(f);
     if(msg){ setError(msg); e.target.value=""; return; }
     setError("");
+
+    // Preview local para el usuario (sin subir todavía)
     try{
       const objURL=URL.createObjectURL(f);
       onVoucherSelect?.(f, objURL);
@@ -467,18 +463,17 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        {/* Header responsive */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
             <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
 
-          <div className="payment-actions flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button onClick={()=>copyText(YAPE,setCopied)} className={"px-3 py-2 rounded-full border text-sm transition w-full sm:w-auto "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
+          <div className="payment-actions flex flex-wrap gap-2">
+            <button onClick={()=>copyText(YAPE,setCopied)} className={"px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button onClick={()=>setOpen(true)} className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition w-full sm:w-auto">Ver QR</button>
+            <button onClick={()=>setOpen(true)} className="px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition">Ver QR</button>
           </div>
         </div>
 
@@ -488,27 +483,27 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         </div>
 
-        {/* Subida + preview local */}
+        {/* Subida + preview local (sin subir a Cloudinary aún) */}
         <div className="mt-3">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
             <button onClick={abrirPicker}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition w-full sm:w-auto">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
               Subir voucher
             </button>
           ) : (
-            <div className="flex flex-col sm:flex-row items-start gap-3">
+            <div className="flex items-start gap-3">
               <a href={voucherPreview} target="_blank" rel="noreferrer"
                  className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
                 <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
               </a>
-              <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <div className="flex flex-col gap-2">
                 <div className="text-xs text-amber-900">Voucher seleccionado</div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50 w-full sm:w-auto">Cambiar imagen</button>
-                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50 w-full sm:w-auto">Quitar</button>
+                <div className="flex gap-2">
+                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
+                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
                 </div>
                 <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
               </div>
@@ -564,6 +559,8 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   }else{
     L.push("Voucher: (no adjuntado)");
   }
+  // Ya NO agregamos "ADJUNTAR CAPTURA..." como pediste
+
   return encodeURIComponent(L.join("\n"));
 }
 
@@ -638,6 +635,7 @@ function App(){
   const [voucherFile, setVoucherFile] = useState(null);
   const [voucherPreview, setVoucherPreview] = useState("");
 
+  // Guardado extra por si el usuario cierra pestaña muy rápido
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
     window.addEventListener('beforeunload', handler);
@@ -680,6 +678,7 @@ function App(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
+    // 1) Subir a Cloudinary AHORA
     let voucherUrl = "";
     try{
       voucherUrl = await subirVoucherAhora(voucherFile);
@@ -688,12 +687,14 @@ function App(){
       return;
     }
 
+    // 2) Armar texto de WhatsApp con la URL final
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
     const text=buildWhatsApp(cart,effective,total,voucherUrl);
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
+    // 3) Registrar en Sheets (no bloquea UX)
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
@@ -707,8 +708,21 @@ function App(){
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
-    window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
+    // 4) ABRIR WHATSAPP (fix para móviles)
+    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
+    const waApp = `whatsapp://send?phone=${WHA}&text=${text}`;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+    if (isMobile) {
+      // Intenta abrir la app; si no, cae al web
+      window.location.href = waApp;
+      setTimeout(()=>{ window.location.href = waWeb; }, 800);
+    } else {
+      // Desktop: nueva pestaña al web
+      window.open(waWeb, "_blank");
+    }
+
+    // 5) Limpiar estados
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
@@ -745,6 +759,6 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
+</script>
 
                                                             
