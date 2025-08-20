@@ -3,13 +3,12 @@ const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 
-/* ========================= Cloudinary (unsigned) ========================= */
+// === NUEVO: Config Cloudinary (unsigned) ===
 const CLOUDINARY_CLOUD = "dw35nct1h";
 const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
 
-/* === (Se mantiene) URL de tu Web App de Apps Script ===
-   *No toco tu Sheets; lo llamo igual que ya estaba en tu flujo.* */
+// === (Se mantiene) URL de tu Web App de Apps Script ===
 const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
@@ -25,7 +24,7 @@ async function copyText(text,setCopied){
   setTimeout(()=>setCopied(false),1600);
 }
 
-/* ========================= Header ========================= */
+// Header now receives callback in props so we can persist before navigating
 function HeaderMini({onSeguir}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
@@ -40,7 +39,6 @@ function HeaderMini({onSeguir}){
   </header>);
 }
 
-/* ========================= PhoneInput ========================= */
 function PhoneInput({value,onChange}){
   const [val,setVal]=useState((value||"").replace(/\D/g,"").slice(-9));
   useEffect(()=>{ setVal((value||"").replace(/\D/g,"").slice(-9)); },[value]);
@@ -62,17 +60,21 @@ function PhoneInput({value,onChange}){
 
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
-/* ========================= DatosEntrega ========================= */
 function DatosEntrega({state,setState}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
+  // 1) cargar una sola vez (hidratar)
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
-      if(raw){ const data=JSON.parse(raw); setState(s=>({...s, ...data})); }
+      if(raw){
+        const data=JSON.parse(raw);
+        setState(s=>({...s, ...data}));
+      }
     }catch(e){}
     setHydrated(true);
   },[]);
+  // 2) guardar SOLO después de hidratar, para no sobrescribir con vacíos
   useEffect(()=>{
     if(!hydrated) return;
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
@@ -81,6 +83,7 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
+  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) ========================= */
   function getPos(opts){
     return new Promise((resolve, reject)=>{
       navigator.geolocation.getCurrentPosition(resolve, reject, opts);
@@ -90,7 +93,7 @@ function DatosEntrega({state,setState}){
     try{
       return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
     }catch(e){
-      if(e && e.code===3){
+      if(e && e.code===3){ // TIMEOUT
         return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
       }
       throw e;
@@ -158,13 +161,23 @@ function DatosEntrega({state,setState}){
             </select>
           </div>
 
+          {/* Dirección + botón a la derecha */}
           <div>
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
-              <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)}
-                placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
-              <button type="button" onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">
+              <input
+                id="direccion"
+                value={direccion||""}
+                onChange={e=>set('direccion',e.target.value)}
+                placeholder="Calle 123, Mz Lt"
+                className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"
+              />
+              <button
+                type="button"
+                onClick={handleUbicacion}
+                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm"
+                title="Usar mi ubicación actual"
+              >
                 📍 Mi ubicación
               </button>
             </div>
@@ -182,7 +195,6 @@ function DatosEntrega({state,setState}){
   );
 }
 
-/* ========================= Productos / Carrito ========================= */
 const PACKS=[
  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
@@ -209,7 +221,6 @@ const PREMIUM=[
  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
-/* ========================= EditModal ========================= */
 function EditModal({item, onClose, onSave}){
   const baseItem = JSON.parse(JSON.stringify(item||{}));
   const [packId,setPackId]=useState(baseItem.packId || "classic");
@@ -337,12 +348,14 @@ function EditModal({item, onClose, onSave}){
   );
 }
 
-/* ========================= CartList ========================= */
 function CartList({cart, setCart, canCalc}){
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
-  useEffect(()=>{ try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); } },[]);
+  useEffect(()=>{
+    try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
+  },[]);
+
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
@@ -404,14 +417,12 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
-/* ========================= PaymentBox: Subida + Validación + Estilos + Cambiar/Eliminar ========================= */
+/* ===================== Uploader estilizado + cambiar/eliminar ===================== */
 function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [error,setError]=useState("");
-  const [validating,setValidating]=useState(false);
-  const [validationInfo,setValidationInfo]=useState(null);
   const fileRef = useRef(null);
 
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
@@ -424,14 +435,13 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
   }
 
   function abrirSelector(){
-    if(uploading||validating) return;
-    setError(""); setValidationInfo(null);
+    if(uploading) return;
+    setError("");
     fileRef.current?.click();
   }
 
   function limpiarVoucher(){
     onVoucherChange?.("");
-    setValidationInfo(null);
     setError("");
     if(fileRef.current) fileRef.current.value = "";
     toast("Voucher eliminado");
@@ -439,14 +449,13 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
 
   async function handleUpload(e){
     const f=e.target.files?.[0];
-    setError(""); setValidationInfo(null);
+    setError("");
     if(!f){ return; }
     const msg=validarArchivo(f);
     if(msg){ setError(msg); return; }
 
     setUploading(true);
     try{
-      // 1) Subir a Cloudinary
       const fd = new FormData();
       fd.append("file", f);
       fd.append("upload_preset", CLOUDINARY_PRESET);
@@ -455,39 +464,16 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
 
       const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
       const data = await res.json();
-      if(!data?.secure_url){ setError("No se pudo subir la imagen. Intenta nuevamente."); return; }
-
-      // 2) Validación en servidor (OCR)
-      setValidating(true);
-      try{
-        const resp = await fetch("/api/validate-voucher", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: data.secure_url,
-            expectedAmount: Number.isFinite(total) ? Number(total) : undefined,
-            method: "yape"
-          })
-        });
-        const out = await resp.json();
-        setValidationInfo(out);
-
-        if (out?.ok && out.valid) {
-          onVoucherChange?.(data.secure_url);
-          toast("Voucher validado ✔");
-        } else {
-          const why = out?.reason || "El voucher no pasó la validación";
-          setError(why);
-          onVoucherChange?.(""); // bloqueo: no guardes url si no pasa validación
-        }
-      } finally {
-        setValidating(false);
+      if(data && data.secure_url){
+        onVoucherChange?.(data.secure_url);
+        toast("Voucher subido ✔");
+      }else{
+        setError("No se pudo subir la imagen. Intenta nuevamente.");
       }
-    } catch (_e) {
+    }catch(_e){
       setError("Error al subir. Revisa tu conexión.");
-    } finally {
+    }finally{
       setUploading(false);
-      // permite volver a subir el mismo archivo si lo desea
       if (e?.target) e.target.value = "";
     }
   }
@@ -512,19 +498,19 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
         {canCalc && <div className="mt-2 text-sm"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         <div className="text-[12px] text-slate-700 mt-1"><strong>Adjunta la captura del pago (Yape/Plin)</strong></div>
 
-        {/* Botones estilizados + input oculto */}
+        {/* Uploader estilizado */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
           {!paymentUrl && (
             <button
               type="button"
               onClick={abrirSelector}
-              disabled={uploading||validating}
-              className={"btn-pill text-white "+((uploading||validating)
+              disabled={uploading}
+              className={"btn-pill text-white "+(uploading
                 ? "bg-amber-400 cursor-not-allowed"
                 : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800")}
             >
-              {uploading ? "Subiendo imagen…" : (validating ? "Validando voucher…" : "Subir voucher")}
+              {uploading ? "Subiendo imagen…" : "Subir voucher"}
             </button>
           )}
           {!!paymentUrl && (
@@ -532,11 +518,11 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
               <button
                 type="button"
                 onClick={abrirSelector}
-                disabled={uploading||validating}
-                className={"btn-pill border "+(uploading||validating
+                disabled={uploading}
+                className={"btn-pill border "+(uploading
                   ? "border-amber-200 text-amber-300 cursor-not-allowed"
                   : "border-amber-300 hover:bg-amber-50 text-amber-800")}
-                title="Volver a subir y reemplazar el voucher"
+                title="Reemplazar voucher"
               >
                 Cambiar voucher
               </button>
@@ -544,7 +530,7 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
                 type="button"
                 onClick={limpiarVoucher}
                 className="btn-pill border border-red-300 text-red-700 hover:bg-red-50"
-                title="Eliminar el voucher actual"
+                title="Eliminar voucher actual"
               >
                 Eliminar
               </button>
@@ -552,7 +538,7 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
           )}
         </div>
 
-        {(uploading||validating) && <div className="text-xs text-slate-600 mt-1">{uploading?"Subiendo imagen…":"Validando voucher…"}</div>}
+        {uploading && <div className="text-xs text-slate-600 mt-1">Subiendo imagen…</div>}
         {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
 
         {/* Preview y link del voucher */}
@@ -560,16 +546,9 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
           <div className="mt-3 p-2 border rounded bg-white flex items-center gap-3">
             <img src={paymentUrl} alt="Voucher" className="h-20 w-16 object-cover rounded-md ring-1 ring-amber-200"/>
             <div className="min-w-0">
-              <div className="text-xs text-emerald-700 font-medium">Voucher validado ✔</div>
+              <div className="text-xs text-emerald-700 font-medium">Voucher cargado ✔</div>
               <a href={paymentUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline text-xs break-all">Abrir imagen</a>
             </div>
-          </div>
-        )}
-
-        {validationInfo && !validationInfo.valid && (
-          <div className="mt-2 p-2 border rounded bg-white text-xs">
-            <div className="font-medium text-red-700">No válido:</div>
-            <div>{validationInfo.reason || "Revisa que la captura sea del voucher e incluya el monto correcto."}</div>
           </div>
         )}
 
@@ -586,7 +565,6 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
   );
 }
 
-/* ========================= Mensaje de WhatsApp ========================= */
 function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
@@ -625,7 +603,7 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   return encodeURIComponent(L.join("\n"));
 }
 
-/* ========================= Helpers a Sheets (se mantienen tal cual) ========================= */
+/* ==================== (SE MANTIENE) Helpers para registro en Sheets ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
@@ -666,15 +644,18 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
   };
 }
 
+// Envía con sendBeacon (texto plano) y fallback x-www-form-urlencoded (sin CORS)
 async function registrarPedidoGSheet(payload) {
   try {
-    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
+    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now(); // evita caché
     const data = JSON.stringify(payload);
 
-    if (navigator.sendBeacon) {
+    if (navigator.sendBeacon) {            // 1) sendBeacon: llega como text/plain
       const ok = navigator.sendBeacon(url, data);
       if (ok) return true;
     }
+
+    // 2) Fallback sin preflight: payload=... (application/x-www-form-urlencoded)
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -686,25 +667,27 @@ async function registrarPedidoGSheet(payload) {
     return false;
   }
 }
+/* ================== FIN Helpers ================== */
 
-/* ========================= App ========================= */
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
 
-  // Persistencia del voucher validado
+  // NUEVO: persistencia simple del voucher
   const [paymentUrl, setPaymentUrl] = useState(()=>{ try{ return localStorage.getItem('wk_voucher_url') || ""; }catch(e){ return ""; } });
   useEffect(()=>{ try{
     if(paymentUrl){ localStorage.setItem('wk_voucher_url', paymentUrl); }
     else{ localStorage.removeItem('wk_voucher_url'); }
   }catch(e){} }, [paymentUrl]);
 
+  // Guardado extra por si el usuario cierra pestaña muy rápido
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
     window.addEventListener('beforeunload', handler);
     return ()=>window.removeEventListener('beforeunload', handler);
   },[state]);
 
+  // callback seguro para seguir comprando
   function seguirComprando(){
     try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
     location.href='index.html';
@@ -718,7 +701,7 @@ function App(){
 
   function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
-    if(!paymentUrl){ toast("Sube y valida el voucher de pago"); return; }
+    if(!paymentUrl){ toast("Sube la captura del pago (voucher)"); return; }
 
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
@@ -726,7 +709,7 @@ function App(){
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
-    // (Se mantiene) registrar en Sheets sin bloquear UX
+    /* === (Se mantiene) registrar pedido en Google Sheets (no bloquea UX) === */
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
@@ -739,12 +722,13 @@ function App(){
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
+    /* === FIN === */
 
     window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
-      localStorage.removeItem("wk_voucher_url");
+      localStorage.removeItem("wk_voucher_url"); // NUEVO: limpiar voucher
       localStorage.setItem("wk_clear_delivery","1");
     }catch(e){}
     setTimeout(()=>{ location.href='index.html'; }, 300);
@@ -769,6 +753,5 @@ function App(){
     </section>
   </div>);
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
