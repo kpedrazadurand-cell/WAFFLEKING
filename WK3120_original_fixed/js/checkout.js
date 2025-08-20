@@ -1,6 +1,5 @@
-<!-- checkout.html usa este JS -->
 <script type="module">
-// ======= TU CHECKOUT COMPLETO (fix pop-up + fix carrito robusto) =======
+// ======= TU CHECKOUT COMPLETO (fix pop-up + RECUPERACIÓN TERCA DE CARRITO) =======
 const {useState,useEffect,useRef}=React;
 const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
@@ -143,7 +142,7 @@ function DatosEntrega({state,setState}){
           <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
 
-          {/* Dirección primero, luego Distrito (como pediste) */}
+          {/* Dirección primero, luego Distrito */}
           <div>
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
@@ -332,7 +331,7 @@ function CartList({cart, setCart, canCalc}){
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
-  // ⚠️ Quitamos el useEffect que recargaba desde localStorage para evitar pisar el estado
+  // (ya no recargamos de localStorage aquí)
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -395,7 +394,7 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
-/* ================= PAYMENT BOX (Preview local, cambiar, quitar) ================= */
+/* ================= PAYMENT BOX ================= */
 function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPreview}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
@@ -425,8 +424,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     const msg=validarArchivo(f);
     if(msg){ setError(msg); e.target.value=""; return; }
     setError("");
-
-    // Preview local para el usuario (sin subir todavía)
     try{
       const objURL=URL.createObjectURL(f);
       onVoucherSelect?.(f, objURL);
@@ -435,28 +432,16 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 
   const Logos = (
     <div className="payment-logos flex items-center gap-2">
-      <img
-        src="assets/yape.png"
-        alt=""
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
-          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="assets/yape.jpg"; }
-          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/yape.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
-      <img
-        src="assets/plin.png"
-        alt=""
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
-          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="../assets/plin.png"; }
-          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/plin.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
+      <img src="assets/yape.png" alt="" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{ if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
+                        else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="assets/yape.jpg"; }
+                        else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/yape.jpg"; }
+                        else { e.target.style.display="none"; }}}/>
+      <img src="assets/plin.png" alt="" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{ if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
+                        else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="../assets/plin.png"; }
+                        else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/plin.jpg"; }
+                        else { e.target.style.display="none"; }}}/>
     </div>
   );
 
@@ -483,10 +468,8 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         </div>
 
-        {/* Subida + preview local (sin subir a Cloudinary aún) */}
         <div className="mt-3">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
-
           {!voucherPreview ? (
             <button onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
@@ -509,7 +492,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
               </div>
             </div>
           )}
-
           {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
         </div>
       </div>
@@ -551,14 +533,11 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   L.push("");L.push(`Cliente: ${nombre}`);L.push(`Tel: ${telFmt}`);
   L.push(`Dirección: ${distrito} — ${direccion}`);
   if(referencia)L.push("Referencia: "+referencia);
-  L.push("Google Maps: "+mapsURL);
+  L.push("Google Maps: "+(state.mapLink?.trim()?state.mapLink.trim():mapsURL));
   L.push("");L.push("Delivery: "+soles(DELIVERY));L.push("Total a pagar: "+soles(total));
   L.push("Forma de pago: Yape/Plin "+YAPE+" — Nombre: "+NOMBRE_TITULAR);
-  if(voucherUrl && voucherUrl.trim().length>0){
-    L.push("Voucher: "+voucherUrl.trim());
-  }else{
-    L.push("Voucher: (no adjuntado)");
-  }
+  if(voucherUrl && voucherUrl.trim().length>0){ L.push("Voucher: "+voucherUrl.trim()); }
+  else{ L.push("Voucher: (no adjuntado)"); }
 
   return encodeURIComponent(L.join("\n"));
 }
@@ -608,11 +587,7 @@ async function registrarPedidoGSheet(payload) {
   try {
     const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
     const data = JSON.stringify(payload);
-
-    if (navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(url, data);
-      if (ok) return true;
-    }
+    if (navigator.sendBeacon) { const ok = navigator.sendBeacon(url, data); if (ok) return true; }
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -620,9 +595,7 @@ async function registrarPedidoGSheet(payload) {
       body: 'payload=' + encodeURIComponent(data)
     });
     return true;
-  } catch (_e) {
-    return false;
-  }
+  } catch (_e) { return false; }
 }
 /* ================== FIN Helpers ================== */
 
@@ -630,36 +603,72 @@ function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
 
-  // --- helpers robustos para carrito ---
-  function safeParse(json, fallback){
-    try{
-      const data = JSON.parse(json);
-      if (Array.isArray(data)) return data;
-      return fallback;
-    }catch(_){ return fallback; }
-  }
-  function loadCartMulti(){
-    const a = safeParse(localStorage.getItem("wk_cart"), null);
-    if (a && a.length) return a;
-    const b = safeParse(localStorage.getItem("wk_cart_bkp"), null);
-    if (b && b.length) return b;
-    const c = safeParse(sessionStorage.getItem("wk_cart"), null);
-    if (c && c.length) return c;
+  // ---------- RECUPERACIÓN TERCA DEL CARRITO ----------
+  function safeParse(json){ try{ return JSON.parse(json); }catch(_){ return null; } }
+  function normalizeCart(x){ return Array.isArray(x)?x:[]; }
+
+  // lee muchas llaves comunes y hace merge por id/props
+  function multiRead(){
+    const candidates = [
+      localStorage.getItem("wk_cart"),
+      localStorage.getItem("wk_cart_bkp"),
+      sessionStorage.getItem("wk_cart"),
+      localStorage.getItem("cart"),
+      localStorage.getItem("carrito"),
+      localStorage.getItem("shopping_cart"),
+    ].map(safeParse).filter(Boolean);
+
+    // también permite que vengan dentro del hash (#...) como fallback opcional
+    if (location.hash && location.hash.length>1){
+      try{
+        const hash = decodeURIComponent(atob(location.hash.slice(1)));
+        const parsed = JSON.parse(hash);
+        if (Array.isArray(parsed)) candidates.unshift(parsed);
+      }catch(_){}
+    }
+
+    // toma el primer no vacío
+    for(const c of candidates){ if (Array.isArray(c) && c.length) return c; }
+    // si ninguno trae data, al menos retorna el primero válido
+    for(const c of candidates){ if (Array.isArray(c)) return c; }
     return [];
   }
 
-  // ===== Estado del carrito usando el loader robusto =====
-  const [cart,setCart]=useState(() => loadCartMulti());
+  // estado del carrito
+  const [cart,setCart]=useState(()=> normalizeCart(multiRead()));
 
-  // Sincroniza SIEMPRE a ls + ss + bkp cuando cambie
+  // reintentos: intenta poblar durante 3s si está vacío (por si la otra página tarda en escribir)
+  useEffect(()=>{
+    if (cart && cart.length>0) return;
+    let tries=0;
+    const timer = setInterval(()=>{
+      tries++;
+      const c = normalizeCart(multiRead());
+      if (c.length>0){
+        setCart(c);
+        clearInterval(timer);
+      }
+      if (tries>=10){ // 10 * 300ms ≈ 3s
+        clearInterval(timer);
+        // hint si estás en file:// (storage aislado)
+        if (location.protocol==='file:'){
+          toast('Abre con http:// (no file://) para compartir el carrito');
+        }
+      }
+    },300);
+    return ()=>clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  // sincroniza a ls + ss + backup
   useEffect(()=>{
     try{
-      const json = JSON.stringify(cart);
+      const json = JSON.stringify(cart||[]);
       localStorage.setItem("wk_cart", json);
-      localStorage.setItem("wk_cart_bkp", json);      // backup
-      sessionStorage.setItem("wk_cart", json);        // copia por pestaña
+      localStorage.setItem("wk_cart_bkp", json);
+      sessionStorage.setItem("wk_cart", json);
     }catch(_){}
-  }, [cart]);
+  },[cart]);
 
   // Voucher (selección local hasta enviar)
   const [voucherFile, setVoucherFile] = useState(null);
@@ -707,11 +716,9 @@ function App(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
-    // 1) Pre-abrir pestaña para evitar bloqueo de pop-ups (solo desktop)
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const preWin = !isMobile ? window.open('', '_blank') : null;
 
-    // 2) Subir voucher ahora
     let voucherUrl = "";
     try{
       voucherUrl = await subirVoucherAhora(voucherFile);
@@ -721,7 +728,6 @@ function App(){
       return;
     }
 
-    // 3) Armar texto WhatsApp
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
     const text=buildWhatsApp(cart,effective,total,voucherUrl);
@@ -731,33 +737,22 @@ function App(){
     const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
     const waApp = `whatsapp://send?phone=${WHA}&text=${text}`;
 
-    // 4) Registrar en Sheets (no bloquea)
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
-        orderId,
-        cart,
-        state: effective,
-        subtotal,
-        total,
-        whatsAppText: decodeURIComponent(text)
+        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
-    // 5) Abrir WhatsApp
     if (isMobile) {
       window.location.href = waApp;
       setTimeout(()=>{ window.location.href = waWeb; }, 1200);
     } else {
-      if (preWin && !preWin.closed) {
-        preWin.location.href = waWeb;
-      } else {
-        window.open(waWeb, "_blank");
-      }
+      if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
+      else { window.open(waWeb, "_blank"); }
     }
 
-    // 6) Limpiar y redirigir con calma
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
