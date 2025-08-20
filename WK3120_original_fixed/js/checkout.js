@@ -1,18 +1,29 @@
-const {useState,useEffect}=React;
-const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
-const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
-const WHA="51957285316";const DELIVERY=7;
+/* global React, ReactDOM */
+const {useState,useEffect,useRef} = React;
+
+// ======= TU CHECKOUT COMPLETO (para Babel UMD) =======
+const LOGO="assets/logo.png";
+const QR="assets/yape-qr.png";
+const YAPE="957285316";
+const NOMBRE_TITULAR="Kevin R. Pedraza D.";
+const WHA="51957285316";
+const DELIVERY=7;
 
 /* ===================== CLOUDINARY (unsigned) ===================== */
 const CLOUDINARY_CLOUD = "dw35nct1h";
 const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
 
-/* ===================== URL de tu Web App ===================== */
+/* ============ (Se mantiene) WebApp de Google Sheets ============== */
 const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
 
-const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
-function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
+const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
+function toast(m){
+  const t = document.getElementById("toast");
+  if(!t) return;
+  t.textContent=m; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1400);
+}
 
 async function copyText(text,setCopied){
   try{ await navigator.clipboard.writeText(text); setCopied(true); }
@@ -24,49 +35,63 @@ async function copyText(text,setCopied){
   setTimeout(()=>setCopied(false),1600);
 }
 
-/* ===================== NUEVO: Validación simple de voucher (OCR) ===================== */
-async function ensureTesseract() {
-  if (!window.Tesseract) {
+/* ===================== NUEVO: OCR Yape/Plin ===================== */
+// Carga Tesseract sólo si hace falta
+async function ensureTesseract(){
+  if(!window.Tesseract){
     await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
   }
 }
+/**
+ * Valida que la imagen parezca un voucher de Yape/Plin.
+ * Reglas: (Yape|Plin) + ≥1 señal adicional típica (monto, operación, “pago exitoso”…)
+ * Acepta sólo PNG/JPG/JPEG/WebP y máx 10MB.
+ */
 async function validarVoucher(file){
   if(!file) return {ok:false,msg:"No se seleccionó archivo"};
-  if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)) return {ok:false,msg:"Solo se permiten imágenes (JPG, PNG, WebP)"};
-  if(file.size>6*1024*1024) return {ok:false,msg:"Máx 6 MB"};
+  // Tipos admitidos: PNG / JPG / JPEG / WebP
+  if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)){
+    return {ok:false,msg:"Formato no permitido. Usa PNG, JPG/JPEG o WebP."};
+  }
+  // Tamaño alineado a tu validación previa
+  if(file.size > 10*1024*1024) return {ok:false,msg:"Máximo 10MB."};
 
   await ensureTesseract();
   const {data:{text}} = await window.Tesseract.recognize(file,'spa+eng');
   const t = (text||"").toLowerCase().replace(/\s+/g," ");
 
-  // Reglas: debe contener Yape o Plin + ≥1 señal adicional típica
   const hasBrand = /\b(yape|plin)\b/.test(t);
-  const signals = [
-    /(pago exitoso|yapeaste|pago recibido)/i,
-    /s[\/.]\s?\d+([.,]\d{2})?/i,
-    /(c[oó]digo|nro\.?|número) de (operaci[oó]n|transacci[oó]n)/i,
-    /\b(interbank|bcp|bbva|scotiabank)\b/i
-  ];
-  const extraScore = signals.reduce((n,rx)=> n + (rx.test(t)?1:0), 0);
+  const extraScore = [
+    /(pago exitoso|yapeaste|pago recibido)/i,                  // mensaje éxito
+    /s[\/.]\s?\d+([.,]\d{2})?/i,                               // S/ 12.00
+    /(c[oó]digo|nro\.?|número)\s+de\s+(operaci[oó]n|transacci[oó]n)/i,
+    /\b(interbank|bcp|bbva|scotiabank)\b/i                     // banco
+  ].reduce((n,rx)=> n + (rx.test(t)?1:0), 0);
+
   const ok = hasBrand && extraScore>=1;
-
-  return { ok, msg: ok ? "Voucher válido ✓" : "No parece un voucher de Yape/Plin" };
+  return { ok, msg: ok ? "Voucher verificado ✓" : "No parece un voucher de Yape/Plin" };
 }
-/* ===================== FIN NUEVO ===================== */
+/* ===================== FIN OCR ===================== */
 
-/* ===================== Header ===================== */
 function HeaderMini({onSeguir}){
-  return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
-    <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
-      <div className="flex items-center gap-3">
-        <img src={LOGO} className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain"/>
-        <div className="leading-4"><h1 className="font-extrabold text-base">Waffle King</h1><p className="text-xs text-slate-700">Confirmación y pago</p></div>
-        <div className="ml-auto">
-          <button onClick={onSeguir} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">Seguir comprando</button>
+  return (
+    <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
+      <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
+        <div className="flex items-center gap-3">
+          <img src={LOGO} className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain" />
+          <div className="leading-4">
+            <h1 className="font-extrabold text-base">Waffle King</h1>
+            <p className="text-xs text-slate-700">Confirmación y pago</p>
+          </div>
+          <div className="ml-auto">
+            <button onClick={onSeguir} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">
+              Seguir comprando
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </header>);
+    </header>
+  );
 }
 
 function PhoneInput({value,onChange}){
@@ -93,18 +118,13 @@ const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 function DatosEntrega({state,setState}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
-  // 1) cargar una sola vez (hidratar)
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
-      if(raw){
-        const data=JSON.parse(raw);
-        setState(s=>({...s, ...data}));
-      }
+      if(raw){ const data=JSON.parse(raw); setState(s=>({...s, ...data})); }
     }catch(e){}
     setHydrated(true);
   },[]);
-  // 2) guardar SOLO después de hidratar, para no sobrescribir con vacíos
   useEffect(()=>{
     if(!hydrated) return;
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
@@ -113,21 +133,12 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) ========================= */
   function getPos(opts){
-    return new Promise((resolve, reject)=>{
-      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
-    });
+    return new Promise((resolve, reject)=>{ navigator.geolocation.getCurrentPosition(resolve, reject, opts); });
   }
   async function obtenerPosicionRobusta(){
-    try{
-      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
-    }catch(e){
-      if(e && e.code===3){ // TIMEOUT
-        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
-      }
-      throw e;
-    }
+    try{ return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
+    catch(e){ if(e && e.code===3){ return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } throw e; }
   }
 
   const handleUbicacion = async () => {
@@ -184,35 +195,24 @@ function DatosEntrega({state,setState}){
         <div className="space-y-2">
           <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
-          <div><label className="text-sm font-medium">Distrito</label>
+          <div>
+            <label className="text-sm font-medium">Dirección</label>
+            <div className="mt-1 flex gap-2">
+              <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)}
+                placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
+              <button type="button" onClick={handleUbicacion}
+                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">
+                📍 Mi ubicación
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Distrito</label>
             <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
               <option value="">Selecciona distrito</option>
               {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-
-          {/* Dirección + botón a la derecha */}
-          <div>
-            <label className="text-sm font-medium">Dirección</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                id="direccion"
-                value={direccion||""}
-                onChange={e=>set('direccion',e.target.value)}
-                placeholder="Calle 123, Mz Lt"
-                className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"
-              />
-              <button
-                type="button"
-                onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm"
-                title="Usar mi ubicación actual"
-              >
-                📍 Mi ubicación
-              </button>
-            </div>
-          </div>
-
           <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <div className="grid grid-cols-2 gap-2">
@@ -226,29 +226,29 @@ function DatosEntrega({state,setState}){
 }
 
 const PACKS=[
- {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
- {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
- {id:"king",name:"Waffle King (2 pisos)",base:40,incTop:4,incSir:3},
+  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
+  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
+  {id:"king",name:"Waffle King (2 pisos)",base:40,incTop:4,incSir:3},
 ];
 const TOPS=[
- {id:"t-platano",name:"Plátano"},{id:"t-fresa",name:"Fresa"},
- {id:"t-obs",name:"Obsesión"},{id:"t-lentejitas",name:"Lentejitas"},
- {id:"t-princesa",name:"Princesa"},{id:"t-oreo",name:"Oreo"},
- {id:"t-morochas",name:"Morochas"},{id:"t-chips",name:"Chips Ahoy"},
+  {id:"t-platano",name:"Plátano"},{id:"t-fresa",name:"Fresa"},
+  {id:"t-obs",name:"Obsesión"},{id:"t-lentejitas",name:"Lentejitas"},
+  {id:"t-princesa",name:"Princesa"},{id:"t-oreo",name:"Oreo"},
+  {id:"t-morochas",name:"Morochas"},{id:"t-chips",name:"Chips Ahoy"},
 ];
 const SIROPES=[
- {id:"s-maple",name:"Miel de maple",extra:0},
- {id:"s-fresa",name:"Jarabe de fresa",extra:0},
- {id:"s-dulce",name:"Dulce de leche",extra:0},
- {id:"s-fudge",name:"Fudge",extra:0},
- {id:"s-hers",name:"Hersheys",extra:2},
+  {id:"s-maple",name:"Miel de maple",extra:0},
+  {id:"s-fresa",name:"Jarabe de fresa",extra:0},
+  {id:"s-dulce",name:"Dulce de leche",extra:0},
+  {id:"s-fudge",name:"Fudge",extra:0},
+  {id:"s-hers",name:"Hersheys",extra:2},
 ];
 const PREMIUM=[
- {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
- {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
- {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
- {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
- {id:"p-ferrero",name:"Ferrero Rocher",price:5},
+  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
+  {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
+  {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
+  {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
+  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
 function EditModal({item, onClose, onSave}){
@@ -326,9 +326,16 @@ function EditModal({item, onClose, onSave}){
           <div>
             <div className="text-sm font-medium mb-1">Toppings ({(tops||[]).length}/{limits.incTop} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
-              {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=limits.incTop);
-                return <button key={t.id} onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
-                  <div className="flex items-center justify-between"><span>{t.name}</span>{active&&<span className="text-xs text-amber-700">✓</span>}</div></button>;
+              {TOPS.map(t=>{
+                const active=tops.includes(t.id); const dis=!active && (tops.length>=limits.incTop);
+                return (
+                  <button key={t.id} onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
+                    className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
+                    <div className="flex items-center justify-between">
+                      <span>{t.name}</span>{active&&<span className="text-xs text-amber-700">✓</span>}
+                    </div>
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -336,24 +343,34 @@ function EditModal({item, onClose, onSave}){
           <div>
             <div className="text-sm font-medium mb-1">Siropes ({(sirs||[]).length}/{limits.incSir} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
-              {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=limits.incSir);
-                return <button key={s.id} onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
-                  <div className="flex items-center justify-between"><span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-amber-700">✓</span>}</div></button>;
+              {SIROPES.map(s=>{
+                const active=sirs.includes(s.id); const dis=!active && (sirs.length>=limits.incSir);
+                return (
+                  <button key={s.id} onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
+                    className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
+                    <div className="flex items-center justify-between">
+                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-amber-700">✓</span>}
+                    </div>
+                  </button>
+                );
               })}
             </div>
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-1">Toppings Premium</div>
+            <div className="text-sm font-medium">Toppings Premium</div>
             <div className="grid md:grid-cols-2 gap-2">
               {PREMIUM.map(p=>(
                 <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
                   <div className="flex items-center justify-between">
-                    <div><div className="font-medium">{p.name}</div><div className="text-xs text-slate-600">+ S/ {p.price.toFixed(2)} c/u</div></div>
+                    <div>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-slate-600">+ S/ {p.price.toFixed(2)} c/u</div>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
-                      <span className="w-8 text-center">{prem[p.id]||0}</span>
                       <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,1)}>+</button>
+                      <span className="w-8 text-center">{prem[p.id]||0}</span>
+                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
                     </div>
                   </div>
                 </div>
@@ -379,15 +396,8 @@ function EditModal({item, onClose, onSave}){
 }
 
 function CartList({cart, setCart, canCalc}){
-  
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
-
-  useEffect(()=>{
-    try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
-  },[]);
-
-  
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -406,33 +416,34 @@ function CartList({cart, setCart, canCalc}){
         </div>
 
         {cart.length===0 ? <p className="text-sm text-slate-600">Tu carrito está vacío.</p> :
-          <ul className="space-y-3">{cart.map((it,i)=>{
-            return (
-              <li key={i} className="rounded-xl border border-slate-200 p-3 bg-white">
-                <div className="sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
-                  <div className="flex items-center justify-between sm:block sm:col-span-8">
-                    <div className="font-semibold text-sm">{it.name} <span className="text-slate-500">× {it.qty}</span></div>
-                    <div className="text-sm sm:hidden">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                  </div>
-                  <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                  <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
-                    <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
-                    <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
-                  </div>
+          <ul className="space-y-3">{cart.map((it,i)=>(
+            <li key={i} className="rounded-xl border border-slate-200 p-3 bg-white">
+              <div className="sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                <div className="flex items-center justify-between sm:block sm:col-span-8">
+                  <div className="font-semibold text-sm">{it.name} <span className="text-slate-500">× {it.qty}</span></div>
+                  <div className="text-sm sm:hidden">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
                 </div>
+                <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
+                <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
+                  <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
+                  <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
+                </div>
+              </div>
 
-                {openAll && (<div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
+              {openAll && (
+                <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
                   <div><div className="font-semibold">Toppings</div><div>{(it.toppings&&it.toppings.length)?it.toppings.join(", "):"—"}</div></div>
                   <div><div className="font-semibold">Siropes</div><div>{(it.siropes&&it.siropes.length)?it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "):"—"}</div></div>
                   <div><div className="font-semibold">Premium</div><div>{(it.premium&&it.premium.length)?it.premium.map(p=>`${p.name} x${p.qty}`).join(", "):"—"}</div></div>
-                  <div className="sm:col-span-3"><div className="font-semibold">Dedicatoria</div>
+                  <div className="sm:col-span-3">
+                    <div className="font-semibold">Dedicatoria</div>
                     <div>{it.recipient ? ("Para: "+it.recipient) : "—"}</div>
                     {it.notes && <div className="mt-0.5">{it.notes}</div>}
                   </div>
-                </div>)}
-              </li>
-            );
-          })}</ul>
+                </div>
+              )}
+            </li>
+          ))}</ul>
         }
 
         <div className="mt-3 text-right text-sm">Subtotal: <b>{soles(subtotal)}</b></div>
@@ -450,68 +461,161 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
-/* ===================== Forma de pago (se mantiene el diseño; añadimos input validado) ===================== */
-function PaymentBox({total,canCalc,onVoucherReady}){
+/* ================= PAYMENT BOX ================= */
+function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPreview}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
-  const [voucherMsg,setVoucherMsg]=useState("");
+  const [error,setError]=useState("");
+  const fileRef=useRef(null);
+
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
-  async function onVoucherChange(e){
-    const f = e.target.files?.[0];
-    if(!f){ setVoucherMsg(""); onVoucherReady && onVoucherReady(null); return; }
-    setVoucherMsg("Verificando…");
-    const res = await validarVoucher(f);
-    setVoucherMsg(res.msg);
-    if(res.ok){ onVoucherReady && onVoucherReady(f); }
-    else{
-      onVoucherReady && onVoucherReady(null);
-      e.target.value = ""; // limpia input
-      toast(res.msg);
-    }
+  function validarArchivo(f){
+    if(!f) return "Selecciona una imagen.";
+    if(!f.type.startsWith("image/")) return "El archivo debe ser una imagen.";
+    if(f.size > 10*1024*1024) return "Máximo 10MB.";
+    return "";
   }
+
+  function abrirPicker(){ fileRef.current?.click(); }
+
+  function limpiarVoucher(){
+    onVoucherClear?.();
+    setError("");
+    if (fileRef.current) fileRef.current.value="";
+  }
+
+  // === NUEVO: Inyectamos OCR aquí SIN tocar estilos ===
+  async function handleChange(e){
+    const f=e.target.files?.[0];
+    if(!f) return;
+
+    // validación básica original (se conserva)
+    const msg=validarArchivo(f);
+    if(msg){ setError(msg); e.target.value=""; return; }
+
+    // validación OCR (Yape/Plin)
+    const res = await validarVoucher(f);
+    if(!res.ok){
+      setError(res.msg);
+      e.target.value = "";
+      onVoucherClear?.();
+      toast(res.msg);
+      return;
+    }
+
+    setError("");
+    try{
+      const objURL=URL.createObjectURL(f);
+      onVoucherSelect?.(f, objURL);
+      toast("Voucher verificado ✓");
+    }catch(_){}
+  }
+
+  const Logos = (
+    <div className="payment-logos flex items-center gap-2">
+      <img
+        src="assets/yape.png"
+        alt=""
+        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{
+          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
+          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="assets/yape.jpg"; }
+          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/yape.jpg"; }
+          else { e.target.style.display="none"; }
+        }}
+      />
+      <img
+        src="assets/plin.png"
+        alt=""
+        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{
+          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
+          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="../assets/plin.png"; }
+          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/plin.jpg"; }
+          else { e.target.style.display="none"; }
+        }}
+      />
+    </div>
+  );
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-100 p-4 shadow-soft">
-        <h4 className="font-semibold mb-3">Forma de pago</h4>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-sm leading-6">
-            <div><span className="font-medium">Número Yape/Plin:</span> {fmt}</div>
-            <div><span className="font-medium">Nombre:</span> {NOMBRE_TITULAR}</div>
+      <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
+        {/* ==== CAMBIO RESPONSIVO: apilado en móvil + botones full-width ==== */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {Logos}
+            <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={()=>copyText(YAPE,setCopied)} className={"btn-pill border "+(copied?"bg-amber-600 text-white":"border-amber-300 hover:bg-amber-50 text-amber-800")}>
+
+          <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
+            <button
+              onClick={()=>copyText(YAPE,setCopied)}
+              className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}
+            >
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button onClick={()=>setOpen(true)} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">Ver QR</button>
+            <button
+              onClick={()=>setOpen(true)}
+              className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition"
+            >
+              Ver QR
+            </button>
           </div>
         </div>
 
-        {canCalc && <div className="mt-2 text-sm"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
-        <div className="text-[12px] text-slate-700 mt-1"><strong>ADJUNTAR CAPTURA DE PAGO CON YAPE</strong></div>
-
-        {/* === NUEVO: input del voucher validado con OCR (mantiene tu estilo) === */}
-        <div className="mt-2">
-          <input type="file" accept="image/*" onChange={onVoucherChange}
-                 className="w-full border rounded-lg p-2 bg-white"/>
-          {voucherMsg && <div className="text-xs mt-1">{voucherMsg}</div>}
+        <div className="mt-3 text-sm leading-6 text-slate-700">
+          <div><span className="font-medium">Número Yape/Plin:</span> {fmt}</div>
+          <div><span className="font-medium">Nombre:</span> {NOMBRE_TITULAR}</div>
+          {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         </div>
 
-        {open && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
+        <div className="mt-3">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
+
+          {!voucherPreview ? (
+            <button onClick={abrirPicker}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
+              Subir voucher
+            </button>
+          ) : (
+            <div className="flex items-start gap-3">
+              <a href={voucherPreview} target="_blank" rel="noreferrer"
+                 className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
+                <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
+              </a>
+              <div className="flex flex-col gap-2">
+                <div className="text-xs text-amber-900">Voucher seleccionado</div>
+                <div className="flex gap-2">
+                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
+                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
+                </div>
+                <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
+              </div>
+            </div>
+          )}
+
+          {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
+        </div>
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
           <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
             <div className="text-center font-semibold mb-3">QR de Yape</div>
             <img src={QR} className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
             <button onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
           </div>
-        </div>)}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
 
-/* ===================== WhatsApp + registro (igual que el tuyo) ===================== */
-function buildWhatsApp(cart,state,total){
+/* ===================== WhatsApp message builder ===================== */
+function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
@@ -526,25 +630,38 @@ function buildWhatsApp(cart,state,total){
   L.push("Waffle King — Pedido");
   if(fecha||hora){L.push("");L.push(`Fecha de entrega: ${fecha||"-"}`);L.push(`Hora: ${hora||"-"}`)};L.push("");
 
-  cart.forEach((it,i)=>{L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
+  cart.forEach((it,i)=>{
+    L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
     if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
     if(it.siropes?.length)L.push("   · Siropes: "+it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "));
     if(it.premium?.length)L.push("   · Premium: "+it.premium.map(p=>`${p.name} x${p.qty}`).join(", "));
-    if(it.recipient || it.notes){ L.push("   · Dedicatoria: "+(it.recipient?`Para ${it.recipient}`:"")+(it.recipient&&it.notes?" — ":"")+(it.notes?it.notes:"")); }
+    if(it.recipient || it.notes){
+      L.push("   · Dedicatoria: "+(it.recipient?`Para ${it.recipient}`:"")+(it.recipient&&it.notes?" — ":"")+(it.notes?it.notes:""));
+    }
   });
 
-  L.push("");L.push(`Cliente: ${nombre}`);L.push(`Tel: ${telFmt}`);
+  L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
   L.push(`Dirección: ${distrito} — ${direccion}`);
-  if(referencia)L.push("Referencia: "+referencia);
-  L.push("Google Maps: "+mapsURL);
-  L.push("");L.push("Delivery: "+soles(DELIVERY));L.push("Total a pagar: "+soles(total));
-  L.push("Forma de pago: Yape/Plin "+YAPE+" — Nombre: "+NOMBRE_TITULAR);
-  L.push("ADJUNTAR CAPTURA DE PAGO CON YAPE.");
+  if(referencia) L.push("Referencia: "+referencia);
+  L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
+
+  // ======= NUEVO BLOQUE "DATOS DE PAGO" (pedido) =======
+  const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
+  L.push("");
+  L.push("Datos de pago:");
+  L.push(`Waffle: ${soles(waffleSubtotal)}`);
+  L.push(`Delivery: ${soles(DELIVERY)}`);
+  L.push(`Total a pagar: ${soles(total)}`);
+  L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
+  L.push("");
+  L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*");
+  L.push("_Atte: Waffle King_");
 
   return encodeURIComponent(L.join("\n"));
 }
 
-/* ==================== Helpers de registro en Sheets (igual) ==================== */
+
+/* ==================== Helpers a Sheets (se mantienen) ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
@@ -557,20 +674,9 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       referencia: state?.referencia || '',
       mapLink: state?.mapLink || ''
     },
-    programado: {
-      fecha: state?.fecha || '',
-      hora:  state?.hora  || ''
-    },
-    montos: {
-      subtotal,
-      delivery: DELIVERY,
-      total
-    },
-    pago: {
-      metodo:  'Yape/Plin',
-      numero:  YAPE,
-      titular: NOMBRE_TITULAR
-    },
+    programado: { fecha: state?.fecha || '', hora: state?.hora  || '' },
+    montos: { subtotal, delivery: DELIVERY, total },
+    pago: { metodo: 'Yape/Plin', numero: YAPE, titular: NOMBRE_TITULAR },
     items: (cart || []).map(it => ({
       name: it.name,
       qty: Number(it.qty || 0),
@@ -584,15 +690,12 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
     whatsAppText
   };
 }
+
 async function registrarPedidoGSheet(payload) {
   try {
     const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
     const data = JSON.stringify(payload);
-
-    if (navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(url, data);
-      if (ok) return true;
-    }
+    if (navigator.sendBeacon) { const ok = navigator.sendBeacon(url, data); if (ok) return true; }
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -605,11 +708,74 @@ async function registrarPedidoGSheet(payload) {
   }
 }
 
-/* ===================== App ===================== */
+/* ================== APP (con recuperación robusta del carrito) ================== */
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
-  const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
-  const [voucherFile,setVoucherFile]=useState(null); // NUEVO
+  const [state,setState]=useState({
+    nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",
+    direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",
+    fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
+  });
+
+  // helpers carrito
+  function safeParse(json){ try{ return JSON.parse(json); }catch(_){ return null; } }
+  function normalizeCart(x){ return Array.isArray(x)?x:[]; }
+  function multiRead(){
+    const candidates = [
+      localStorage.getItem("wk_cart"),
+      localStorage.getItem("wk_cart_bkp"),
+      sessionStorage.getItem("wk_cart"),
+      localStorage.getItem("cart"),
+      localStorage.getItem("carrito"),
+      localStorage.getItem("shopping_cart"),
+    ].map(safeParse).filter(Boolean);
+
+    if (location.hash && location.hash.length>1){
+      try{
+        const hash = decodeURIComponent(atob(location.hash.slice(1)));
+        const parsed = JSON.parse(hash);
+        if (Array.isArray(parsed)) candidates.unshift(parsed);
+      }catch(_){}
+    }
+    for(const c of candidates){ if (Array.isArray(c) && c.length) return c; }
+    for(const c of candidates){ if (Array.isArray(c)) return c; }
+    return [];
+  }
+
+  const [cart,setCart]=useState(()=> normalizeCart(multiRead()));
+
+  useEffect(()=>{
+    if (cart && cart.length>0) return;
+    let tries=0;
+    const timer = setInterval(()=>{
+      tries++;
+      const c = normalizeCart(multiRead());
+      if (c.length>0){
+        setCart(c);
+        clearInterval(timer);
+      }
+      if (tries>=10){
+        clearInterval(timer);
+        if (location.protocol==='file:'){
+          toast('Abre con http:// (no file://) para compartir el carrito');
+        }
+      }
+    },300);
+    return ()=>clearInterval(timer);
+  },[]);
+
+  useEffect(()=>{
+    try{
+      const json = JSON.stringify(cart||[]);
+      localStorage.setItem("wk_cart", json);
+      localStorage.setItem("wk_cart_bkp", json);
+      sessionStorage.setItem("wk_cart", json);
+    }catch(_){}
+  },[cart]);
+
+  // Voucher
+  const [voucherFile, setVoucherFile] = useState(null);
+  const [voucherPreview, setVoucherPreview] = useState("");
 
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
@@ -622,62 +788,108 @@ function App(){
     location.href='index.html';
   }
 
-  const [cart,setCart]=useState(()=>{ try{ return JSON.parse(localStorage.getItem("wk_cart")||"[]"); }catch(e){ return []; } });
-  useEffect(()=>{ try{ localStorage.setItem("wk_cart", JSON.stringify(cart)); }catch(e){} }, [cart]);
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
+  function onVoucherSelect(file, previewUrl){ setVoucherFile(file); setVoucherPreview(previewUrl || ""); }
+  function onVoucherClear(){ setVoucherFile(null); setVoucherPreview(""); }
+
+  async function subirVoucherAhora(file){
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", CLOUDINARY_PRESET);
+    fd.append("folder", "wk3120/payments");
+    fd.append("context", `app=wk3120|tipo=voucher|monto=S/${total}`);
+    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
+    const data = await res.json();
+    if(!data?.secure_url) throw new Error("No se pudo subir el voucher");
+    return data.secure_url;
+  }
+
+  // ====== ENVIAR (AJUSTADO: OCR defensivo y luego https para WhatsApp) ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
-    // Bloqueamos si no hay voucher válido
-    if(!voucherFile){
-      toast("Adjunta un voucher válido de Yape/Plin");
+    if(!voucherFile){ toast("Sube el voucher de pago"); return; }
+
+    // Revalidación OCR por seguridad (por si manipulan el DOM)
+    const check = await validarVoucher(voucherFile);
+    if(!check.ok){ toast(check.msg); return; }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const preWin = !isMobile ? window.open('', '_blank') : null;
+
+    let voucherUrl = "";
+    try{
+      voucherUrl = await subirVoucherAhora(voucherFile);
+    }catch(e){
+      toast("Error al subir el voucher. Intenta de nuevo.");
+      if (preWin && !preWin.closed) preWin.close();
       return;
     }
-    // (Opcional) Revalidación rápida antes de enviar
-    const re = await validarVoucher(voucherFile);
-    if(!re.ok){ toast(re.msg); return; }
 
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
-    const text=buildWhatsApp(cart,effective,total);
-    if(text===false){ toast("Completa los datos de entrega"); return; }
-    if(text===null){ toast("Carrito vacío"); return; }
+    const text=buildWhatsApp(cart,effective,total,voucherUrl);
+    if(text===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
+    if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
+
+    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
 
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
-        orderId,
-        cart,
-        state: effective,
-        subtotal,
-        total,
-        whatsAppText: decodeURIComponent(text)
+        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
 
-    window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
+    if (isMobile) {
+      window.location.href = waWeb;
+    } else {
+      if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
+      else { window.open(waWeb, "_blank"); }
+    }
+
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
       localStorage.setItem("wk_clear_delivery","1");
+      sessionStorage.removeItem("wk_cart");
     }catch(e){}
-    setTimeout(()=>{ location.href='index.html'; }, 300);
+
+    setVoucherFile(null);
+    setVoucherPreview("");
+
+    setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  return (<div>
-    <HeaderMini onSeguir={seguirComprando}/>
-    <DatosEntrega state={state} setState={setState}/>
-    <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
-    <PaymentBox total={total} canCalc={canCalc} onVoucherReady={setVoucherFile}/>
-    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-      <button onClick={enviar} className="w-full btn-pill text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800">
-        Enviar pedido por WhatsApp
-      </button>
-    </section>
-  </div>);
+  const canSend = !!voucherFile;
+
+  return (
+    <div>
+      <HeaderMini onSeguir={seguirComprando}/>
+      <DatosEntrega state={state} setState={setState}/>
+      <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
+      <PaymentBox
+        total={total}
+        canCalc={canCalc}
+        onVoucherSelect={onVoucherSelect}
+        onVoucherClear={onVoucherClear}
+        voucherPreview={voucherPreview}
+      />
+      <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
+        <button onClick={enviar}
+          disabled={!canSend}
+          className={"w-full btn-pill text-white "+(canSend
+            ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800"
+            : "btn-disabled bg-amber-400")}
+          aria-disabled={!canSend}>
+          Enviar pedido por WhatsApp
+        </button>
+      </section>
+    </div>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
