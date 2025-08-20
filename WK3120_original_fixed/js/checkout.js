@@ -36,36 +36,12 @@ async function copyText(text,setCopied){
 }
 
 /* ===================== NUEVO: OCR Yape/Plin ===================== */
-// Loader genérico por <script> como fallback
-function ensureScript(src, testFn){
-  return new Promise((resolve,reject)=>{
-    if (testFn && testFn()) return resolve();
-    const s=document.createElement('script');
-    s.src=src; s.async=true;
-    s.onload=()=> testFn && testFn() ? resolve() : reject(new Error('Script cargado pero la librería no está disponible'));
-    s.onerror=()=>reject(new Error('No se pudo cargar '+src));
-    document.head.appendChild(s);
-  });
-}
-
-// Carga Tesseract sólo si hace falta (dinámico + fallback)
+// Carga Tesseract sólo si hace falta
 async function ensureTesseract(){
-  if (window.Tesseract) return;
-  try{
+  if(!window.Tesseract){
     await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
-  }catch(_){
-    await ensureScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js", ()=>!!window.Tesseract);
   }
 }
-
-// Detecta HEIC/HEIF (no soportado por el validador actual)
-function isHEIC(file){
-  if (!file) return false;
-  if (/image\/hei[cf]/i.test(file.type)) return true;
-  if (/\.(heic|heif)$/i.test(file.name||"")) return true;
-  return false;
-}
-
 /**
  * Valida que la imagen parezca un voucher de Yape/Plin.
  * Reglas: (Yape|Plin) + ≥1 señal adicional típica (monto, operación, “pago exitoso”…)
@@ -297,7 +273,7 @@ function EditModal({item, onClose, onSave}){
 
   function save(){
     const base = pack.base;
-    const sirsObjs = SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0}));
+    const sirsObjs = SIROPES.filter(s=>sirs.includes(s.id)).map(s=>( {name:s.name,extra:s.extra||0} ));
     const extraSirs = sirsObjs.reduce((a,s)=>a+(s.extra||0),0);
     const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
     const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
@@ -490,13 +466,16 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
   const [error,setError]=useState("");
+  const [isVerifying,setIsVerifying]=useState(false);      // NUEVO
+  const [localPreview,setLocalPreview]=useState("");        // NUEVO: preview inmediato
   const fileRef=useRef(null);
+  const currentObjUrlRef = useRef(null);                    // NUEVO: para revoke
 
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
   function validarArchivo(f){
     if(!f) return "Selecciona una imagen.";
-    if(!f.type.startsWith("image/")) return "El archivo debe ser una imagen.";
+    if(!/^image\/(png|jpe?g|webp)$/i.test(f.type)) return "Usa PNG, JPG/JPEG o WebP.";
     if(f.size > 10*1024*1024) return "Máximo 10MB.";
     return "";
   }
@@ -506,49 +485,68 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   function limpiarVoucher(){
     onVoucherClear?.();
     setError("");
+    setIsVerifying(false);
+    if (currentObjUrlRef.current) {
+      URL.revokeObjectURL(currentObjUrlRef.current);
+      currentObjUrlRef.current = null;
+    }
+    setLocalPreview("");
     if (fileRef.current) fileRef.current.value="";
   }
 
-  // === NUEVO: Inyectamos OCR aquí SIN tocar estilos ===
+  // === NUEVO: preview inmediato + loader + OCR ===
   async function handleChange(e){
     const f=e.target.files?.[0];
     if(!f) return;
 
-    // Feedback inmediato
-    setError("Verificando…");
+    // permitir volver a elegir la misma imagen más tarde
+    if (fileRef.current) fileRef.current.value="";
 
-    // validación básica original (se conserva)
+    // validación básica
     const msg=validarArchivo(f);
-    if(msg){ setError(msg); e.target.value=""; return; }
+    if(msg){ setError(msg); limpiarVoucher(); return; }
 
-    // Bloqueo HEIC/HEIF (no soportado en este flujo)
-    if (isHEIC(f)){
-      const m = "Formato HEIC/HEIF no soportado. Sube PNG, JPG/JPEG o WebP. En iPhone: Ajustes ▸ Cámara ▸ Formatos ▸ Más compatible.";
-      setError(m); toast(m); e.target.value=""; onVoucherClear?.(); return;
+    // 1) Preview inmediato
+    if (currentObjUrlRef.current) {
+      URL.revokeObjectURL(currentObjUrlRef.current);
+      currentObjUrlRef.current = null;
     }
+    const objURL = URL.createObjectURL(f);
+    currentObjUrlRef.current = objURL;
+    setLocalPreview(objURL);
+    setError("");
+    setIsVerifying(true);
 
+    // 2) OCR (puede tardar)
     try{
-      // validación OCR (Yape/Plin)
       const res = await validarVoucher(f);
       if(!res.ok){
+        setIsVerifying(false);
         setError(res.msg);
-        e.target.value = "";
-        onVoucherClear?.();
         toast(res.msg);
+        if (currentObjUrlRef.current) {
+          URL.revokeObjectURL(currentObjUrlRef.current);
+          currentObjUrlRef.current = null;
+        }
+        setLocalPreview("");
+        onVoucherClear?.();
         return;
       }
 
-      setError("");
-      try{
-        const objURL=URL.createObjectURL(f);
-        onVoucherSelect?.(f, objURL);
-        toast("Voucher verificado ✓");
-      }catch(_){}
-    }catch(ex){
-      console.error(ex);
-      const m = "No se pudo verificar el voucher (OCR). Revisa tu conexión e inténtalo otra vez.";
-      setError(m); toast(m);
-      e.target.value=""; onVoucherClear?.();
+      // 3) OK: notificamos arriba
+      onVoucherSelect?.(f, objURL);
+      toast("Voucher verificado ✓");
+      setIsVerifying(false);
+    }catch(_err){
+      setIsVerifying(false);
+      setError("No se pudo analizar la imagen. Intenta nuevamente.");
+      toast("Error al analizar el voucher");
+      if (currentObjUrlRef.current) {
+        URL.revokeObjectURL(currentObjUrlRef.current);
+        currentObjUrlRef.current = null;
+      }
+      setLocalPreview("");
+      onVoucherClear?.();
     }
   }
 
@@ -582,7 +580,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        {/* ==== CAMBIO RESPONSIVO: apilado en móvil + botones full-width ==== */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
@@ -614,7 +611,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
         <div className="mt-3">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
-          {!voucherPreview ? (
+          {!(localPreview || voucherPreview) ? (
             <button onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
@@ -622,17 +619,25 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
             </button>
           ) : (
             <div className="flex items-start gap-3">
-              <a href={voucherPreview} target="_blank" rel="noreferrer"
+              <a href={(voucherPreview || localPreview)} target="_blank" rel="noreferrer"
                  className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
-                <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
+                <img src={(voucherPreview || localPreview)} alt="voucher" className="h-24 w-24 object-cover"/>
               </a>
               <div className="flex flex-col gap-2">
-                <div className="text-xs text-amber-900">Voucher seleccionado</div>
-                <div className="flex gap-2">
-                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
-                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
+                <div className="text-xs text-amber-900">
+                  {isVerifying ? "Analizando voucher…" : "Voucher seleccionado"}
                 </div>
-                <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
+                <div className="flex gap-2">
+                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50" disabled={isVerifying}>
+                    Cambiar imagen
+                  </button>
+                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50" disabled={isVerifying}>
+                    Quitar
+                  </button>
+                </div>
+                {isVerifying
+                  ? <div className="text-xs text-slate-600 animate-pulse">Esto puede tardar unos segundos…</div>
+                  : <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>}
               </div>
             </div>
           )}
@@ -847,18 +852,14 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR (AJUSTADO: OCR defensivo y luego https para WhatsApp) ======
+  // ====== ENVIAR (con revalidación OCR y manejo de ventana) ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
-    // Revalidación OCR por seguridad (por si manipulan el DOM)
-    try{
-      const check = await validarVoucher(voucherFile);
-      if(!check.ok){ toast(check.msg); return; }
-    }catch(ex){
-      toast("No se pudo verificar el voucher (OCR)."); return;
-    }
+    // Revalidación OCR por seguridad
+    const check = await validarVoucher(voucherFile);
+    if(!check.ok){ toast(check.msg); return; }
 
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const preWin = !isMobile ? window.open('', '_blank') : null;
@@ -869,6 +870,8 @@ function App(){
     }catch(e){
       toast("Error al subir el voucher. Intenta de nuevo.");
       if (preWin && !preWin.closed) preWin.close();
+      // liberar URL local si es blob
+      try { if (voucherPreview?.startsWith("blob:")) URL.revokeObjectURL(voucherPreview); } catch(_) {}
       return;
     }
 
