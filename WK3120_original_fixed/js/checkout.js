@@ -441,7 +441,7 @@ function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
             {/* === AQUÍ VAN LAS IMÁGENES (en lugar de los circulitos) === */}
             <div className="flex -space-x-2">
               <img src="assets/yape.png" alt="Yape" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"/>
-              <img src="assets/plin.png" alt="Plin" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"/>
+              <img src="assets/plin.jpg" alt="Plin" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"/>
             </div>
             <h4 className="font-semibold text-slate-800">Forma de pago</h4>
           </div>
