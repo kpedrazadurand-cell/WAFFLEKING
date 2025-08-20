@@ -802,19 +802,4 @@ function App(){
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
 
-/* Ajustes móviles finos */
-@media (max-width: 480px) {
-  .mobile\:flex-col { display: flex; flex-direction: column; }
-  .mobile\:w-full { width: 100%; }
-  .mobile\:grid-cols-1 { grid-template-columns: 1fr !important; }
-  .mobile\:gap-2 { gap: 0.5rem; }
-}
-
-/* Suaviza sombras del recuadro de pago en pantallas pequeñas */
-@media (max-width: 640px) {
-  .payment-logos img { height: 28px; width: 28px; }
-  .payment-actions { width: 100%; }
-}
-
-
                                                             
