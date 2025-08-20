@@ -3,7 +3,12 @@ const LOGO="assets/logo.png";const QR="assets/yape-qr.png";
 const YAPE="957285316";const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";const DELIVERY=7;
 
-// === NUEVO: URL de tu Web App de Apps Script (con LOG robusto) ===
+// === NUEVO: Config Cloudinary (unsigned) ===
+const CLOUDINARY_CLOUD = "dw35nct1h";
+const CLOUDINARY_PRESET = "wk-payments";
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
+
+// === (Se mantiene) URL de tu Web App de Apps Script ===
 const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
@@ -78,10 +83,7 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) =========================
-     (igual que tu versión; no se tocó tu lógica de compra/pago)
-  ============================================================================== */
-
+  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) ========================= */
   function getPos(opts){
     return new Promise((resolve, reject)=>{
       navigator.geolocation.getCurrentPosition(resolve, reject, opts);
@@ -312,7 +314,7 @@ function EditModal({item, onClose, onSave}){
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-1">Toppings Premium</div>
+            <div className="text-sm font-medium">Toppings Premium</div>
             <div className="grid md:grid-cols-2 gap-2">
               {PREMIUM.map(p=>(
                 <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
@@ -347,15 +349,12 @@ function EditModal({item, onClose, onSave}){
 }
 
 function CartList({cart, setCart, canCalc}){
-  
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   useEffect(()=>{
     try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
   },[]);
-
-  
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -418,10 +417,54 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
-function PaymentBox({total,canCalc}){
+function PaymentBox({total,canCalc, onVoucherChange, paymentUrl}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
+  const [uploading,setUploading]=useState(false);
+  const [error,setError]=useState("");
+
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
+
+  function validarArchivo(f){
+    if(!f) return "Selecciona una imagen.";
+    if(!f.type.startsWith("image/")) return "El archivo debe ser una imagen.";
+    if(f.size > 10*1024*1024) return "Máximo 10MB.";
+    return "";
+  }
+
+  async function handleUpload(e){
+    const f=e.target.files?.[0];
+    setError("");
+    if(!f){ return; }
+    const msg=validarArchivo(f);
+    if(msg){ setError(msg); return; }
+
+    setUploading(true);
+    try{
+      const fd = new FormData();
+      fd.append("file", f);
+      fd.append("upload_preset", CLOUDINARY_PRESET);
+      fd.append("folder", "wk3120/payments");
+      fd.append("context", `app=wk3120|tipo=voucher|monto=S/${total}`);
+
+      const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
+      const data = await res.json();
+      if(data && data.secure_url){
+        onVoucherChange?.(data.secure_url);
+        setError("");
+        toast("Voucher subido ✔");
+      }else{
+        setError("No se pudo subir la imagen. Intenta nuevamente.");
+      }
+    }catch(_e){
+      setError("Error al subir. Revisa tu conexión.");
+    }finally{
+      setUploading(false);
+      // Limpia el input para permitir volver a seleccionar el mismo archivo si es necesario
+      e.target.value = "";
+    }
+  }
+
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-100 p-4 shadow-soft">
@@ -438,8 +481,22 @@ function PaymentBox({total,canCalc}){
             <button onClick={()=>setOpen(true)} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">Ver QR</button>
           </div>
         </div>
+
         {canCalc && <div className="mt-2 text-sm"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
-        <div className="text-[12px] text-slate-700 mt-1"><strong>ADJUNTAR CAPTURA DE PAGO CON YAPE</strong></div>
+        <div className="text-[12px] text-slate-700 mt-1"><strong>Adjunta la captura del pago (Yape/Plin)</strong></div>
+
+        {/* NUEVO: Uploader */}
+        <div className="mt-2">
+          <input type="file" accept="image/*" onChange={handleUpload} disabled={uploading}/>
+          {uploading && <div className="text-xs text-slate-600 mt-1">Subiendo imagen…</div>}
+          {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
+          {paymentUrl && (
+            <div className="mt-2 p-2 border rounded bg-white">
+              <div className="text-xs">Voucher subido ✔</div>
+              <a href={paymentUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline text-xs break-all">Ver imagen</a>
+            </div>
+          )}
+        </div>
 
         {open && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
           <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
@@ -453,7 +510,7 @@ function PaymentBox({total,canCalc}){
   );
 }
 
-function buildWhatsApp(cart,state,total){
+function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
@@ -481,18 +538,22 @@ function buildWhatsApp(cart,state,total){
   L.push("Google Maps: "+mapsURL);
   L.push("");L.push("Delivery: "+soles(DELIVERY));L.push("Total a pagar: "+soles(total));
   L.push("Forma de pago: Yape/Plin "+YAPE+" — Nombre: "+NOMBRE_TITULAR);
+  if(voucherUrl && voucherUrl.trim().length>0){
+    L.push("Voucher: "+voucherUrl.trim());
+  }else{
+    L.push("Voucher: (no adjuntado)");
+  }
   L.push("ADJUNTAR CAPTURA DE PAGO CON YAPE.");
 
   return encodeURIComponent(L.join("\n"));
 }
 
-/* ==================== NUEVO (AÑADIDO): Helpers de registro en Sheets ==================== */
-// Construye el payload en español para Apps Script (no toca tu carrito/UX)
+/* ==================== (SE MANTIENE) Helpers para registro en Sheets ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
     cliente: {
-      dni: state?.dni || 0, // NUEVO: enviamos DNI si existe; si no, 0
+      dni: state?.dni || 0,
       nombre: state?.nombre || '',
       telefono: state?.telefono || '',
       distrito: state?.distrito || '',
@@ -551,11 +612,18 @@ async function registrarPedidoGSheet(payload) {
     return false;
   }
 }
-/* ================== FIN NUEVO (AÑADIDO) ================== */
+/* ================== FIN Helpers ================== */
 
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
+
+  // NUEVO: persistencia simple del voucher
+  const [paymentUrl, setPaymentUrl] = useState(()=>{ try{ return localStorage.getItem('wk_voucher_url') || ""; }catch(e){ return ""; } });
+  useEffect(()=>{ try{
+    if(paymentUrl){ localStorage.setItem('wk_voucher_url', paymentUrl); }
+    else{ localStorage.removeItem('wk_voucher_url'); }
+  }catch(e){} }, [paymentUrl]);
 
   // Guardado extra por si el usuario cierra pestaña muy rápido
   useEffect(()=>{
@@ -578,13 +646,15 @@ function App(){
 
   function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
+    if(!paymentUrl){ toast("Sube la captura del pago (voucher)"); return; }
+
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
-    const text=buildWhatsApp(cart,effective,total);
+    const text=buildWhatsApp(cart,effective,total,paymentUrl);
     if(text===false){ toast("Completa los datos de entrega"); return; }
     if(text===null){ toast("Carrito vacío"); return; }
 
-    /* === NUEVO: registrar pedido en Google Sheets (no bloquea UX) === */
+    /* === (Se mantiene) registrar pedido en Google Sheets (no bloquea UX) === */
     try{
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
@@ -597,28 +667,37 @@ function App(){
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
-    /* === FIN NUEVO === */
+    /* === FIN === */
 
     window.open(`https://wa.me/${WHA}?text=${text}`,"_blank");
     try{
       localStorage.removeItem("wk_cart");
       localStorage.removeItem("wk_delivery");
+      localStorage.removeItem("wk_voucher_url"); // NUEVO: limpiar voucher
       localStorage.setItem("wk_clear_delivery","1");
     }catch(e){}
     setTimeout(()=>{ location.href='index.html'; }, 300);
   }
 
+  const canSend = !!paymentUrl;
+
   return (<div>
     <HeaderMini onSeguir={seguirComprando}/>
     <DatosEntrega state={state} setState={setState}/>
     <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
-    <PaymentBox total={total} canCalc={canCalc}/>
+    <PaymentBox total={total} canCalc={canCalc} onVoucherChange={setPaymentUrl} paymentUrl={paymentUrl}/>
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-      <button onClick={enviar} className="w-full btn-pill text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800">
+      <button onClick={enviar}
+        disabled={!canSend}
+        className={"w-full btn-pill text-white "+(canSend
+          ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800"
+          : "btn-disabled bg-amber-400")}
+        aria-disabled={!canSend}>
         Enviar pedido por WhatsApp
       </button>
     </section>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
