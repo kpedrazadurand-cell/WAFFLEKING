@@ -25,28 +25,32 @@ async function copyText(text,setCopied){
 }
 
 /* ===================== NUEVO: Validación simple de voucher (OCR) ===================== */
-async function ensureTesseract(){
-  if(!window.Tesseract){
+async function ensureTesseract() {
+  if (!window.Tesseract) {
     await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
   }
 }
 async function validarVoucher(file){
   if(!file) return {ok:false,msg:"No se seleccionó archivo"};
-  if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)) return {ok:false,msg:"Solo imágenes (JPG, PNG, WebP)"};
+  if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)) return {ok:false,msg:"Solo se permiten imágenes (JPG, PNG, WebP)"};
   if(file.size>6*1024*1024) return {ok:false,msg:"Máx 6 MB"};
 
   await ensureTesseract();
   const {data:{text}} = await window.Tesseract.recognize(file,'spa+eng');
-  const t = (text||"").toLowerCase();
+  const t = (text||"").toLowerCase().replace(/\s+/g," ");
 
-  let score=0;
-  if(t.includes("yape")||t.includes("plin")) score++;
-  if(t.includes("pago exitoso")||t.includes("yapeaste")) score++;
-  if(/s[\/.]\s?\d+/.test(t)) score++;              // S/ 12.00
-  if(t.includes("operacion")||t.includes("operación")) score++; // Código de operación
+  // Reglas: debe contener Yape o Plin + ≥1 señal adicional típica
+  const hasBrand = /\b(yape|plin)\b/.test(t);
+  const signals = [
+    /(pago exitoso|yapeaste|pago recibido)/i,
+    /s[\/.]\s?\d+([.,]\d{2})?/i,
+    /(c[oó]digo|nro\.?|número) de (operaci[oó]n|transacci[oó]n)/i,
+    /\b(interbank|bcp|bbva|scotiabank)\b/i
+  ];
+  const extraScore = signals.reduce((n,rx)=> n + (rx.test(t)?1:0), 0);
+  const ok = hasBrand && extraScore>=1;
 
-  const ok = score>=2;
-  return {ok,msg: ok?"Voucher válido ✓":"No parece un voucher válido"};
+  return { ok, msg: ok ? "Voucher válido ✓" : "No parece un voucher de Yape/Plin" };
 }
 /* ===================== FIN NUEVO ===================== */
 
@@ -89,6 +93,7 @@ const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 function DatosEntrega({state,setState}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
+  // 1) cargar una sola vez (hidratar)
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
@@ -99,6 +104,7 @@ function DatosEntrega({state,setState}){
     }catch(e){}
     setHydrated(true);
   },[]);
+  // 2) guardar SOLO después de hidratar, para no sobrescribir con vacíos
   useEffect(()=>{
     if(!hydrated) return;
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
@@ -107,12 +113,23 @@ function DatosEntrega({state,setState}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  // === Mi ubicación (tu lógica original) ===
-  function getPos(opts){return new Promise((resolve,reject)=>{navigator.geolocation.getCurrentPosition(resolve,reject,opts);});}
-  async function obtenerPosicionRobusta(){
-    try{return await getPos({enableHighAccuracy:true,timeout:8000,maximumAge:0});}
-    catch(e){ if(e&&e.code===3){ return await getPos({enableHighAccuracy:false,timeout:8000,maximumAge:60000}); } throw e; }
+  /* ========================= 📍 MI UBICACIÓN (ROBUSTO) ========================= */
+  function getPos(opts){
+    return new Promise((resolve, reject)=>{
+      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+    });
   }
+  async function obtenerPosicionRobusta(){
+    try{
+      return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
+    }catch(e){
+      if(e && e.code===3){ // TIMEOUT
+        return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 });
+      }
+      throw e;
+    }
+  }
+
   const handleUbicacion = async () => {
     if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
     toast('Obteniendo ubicación…');
@@ -120,6 +137,7 @@ function DatosEntrega({state,setState}){
       const { coords } = await obtenerPosicionRobusta();
       const lat = coords.latitude, lng = coords.longitude;
       const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
+
       let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       try{
         const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
@@ -139,6 +157,7 @@ function DatosEntrega({state,setState}){
           if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
         }
       }catch(_){}
+
       set('direccion', finalDireccion);
       set('mapLink', mapsURL);
       toast('Ubicación detectada ✓');
@@ -206,7 +225,6 @@ function DatosEntrega({state,setState}){
   );
 }
 
-/* ===================== Carrito / Edición (tal cual) ===================== */
 const PACKS=[
  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
@@ -361,12 +379,15 @@ function EditModal({item, onClose, onSave}){
 }
 
 function CartList({cart, setCart, canCalc}){
+  
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   useEffect(()=>{
     try{ setCart(JSON.parse(localStorage.getItem("wk_cart")||"[]")); }catch(e){ setCart([]); }
   },[]);
+
+  
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
@@ -429,31 +450,26 @@ function CartList({cart, setCart, canCalc}){
   );
 }
 
-/* ===================== Forma de pago (agregamos validador + input) ===================== */
-function PaymentBox({total,canCalc}){
+/* ===================== Forma de pago (se mantiene el diseño; añadimos input validado) ===================== */
+function PaymentBox({total,canCalc,onVoucherReady}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
   const [voucherMsg,setVoucherMsg]=useState("");
-  const [voucherOK,setVoucherOK]=useState(false);
-  const [voucherFile,setVoucherFile]=useState(null);
+  const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
   async function onVoucherChange(e){
     const f = e.target.files?.[0];
-    if(!f){ setVoucherOK(false); setVoucherMsg(""); setVoucherFile(null); return; }
+    if(!f){ setVoucherMsg(""); onVoucherReady && onVoucherReady(null); return; }
     setVoucherMsg("Verificando…");
-    try{
-      const res = await validarVoucher(f);
-      setVoucherMsg(res.msg);
-      setVoucherOK(res.ok);
-      setVoucherFile(res.ok ? f : null);
-      if(!res.ok) toast("Adjunta un voucher de Yape/Plin válido");
-    }catch(_){
-      setVoucherOK(false); setVoucherFile(null);
-      setVoucherMsg("Error validando voucher");
+    const res = await validarVoucher(f);
+    setVoucherMsg(res.msg);
+    if(res.ok){ onVoucherReady && onVoucherReady(f); }
+    else{
+      onVoucherReady && onVoucherReady(null);
+      e.target.value = ""; // limpia input
+      toast(res.msg);
     }
   }
-
-  const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
@@ -475,13 +491,11 @@ function PaymentBox({total,canCalc}){
         {canCalc && <div className="mt-2 text-sm"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         <div className="text-[12px] text-slate-700 mt-1"><strong>ADJUNTAR CAPTURA DE PAGO CON YAPE</strong></div>
 
-        {/* === NUEVO: input para el voucher (mismo estilo del proyecto) === */}
+        {/* === NUEVO: input del voucher validado con OCR (mantiene tu estilo) === */}
         <div className="mt-2">
           <input type="file" accept="image/*" onChange={onVoucherChange}
                  className="w-full border rounded-lg p-2 bg-white"/>
-          {voucherMsg && (
-            <div className={"text-xs mt-1 "+(voucherOK?"text-green-700":"text-red-600")}>{voucherMsg}</div>
-          )}
+          {voucherMsg && <div className="text-xs mt-1">{voucherMsg}</div>}
         </div>
 
         {open && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
@@ -492,9 +506,6 @@ function PaymentBox({total,canCalc}){
           </div>
         </div>)}
       </div>
-
-      {/* Exponemos el estado hacia arriba por eventos globales si lo necesitas */}
-      <div id="__voucher_state" data-ok={voucherOK?1:0} style={{display:'none'}}></div>
     </section>
   );
 }
@@ -533,8 +544,8 @@ function buildWhatsApp(cart,state,total){
   return encodeURIComponent(L.join("\n"));
 }
 
-/* ===== Helpers de registro en Sheets: añadimos voucherUrl en el payload ===== */
-function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText, voucherUrl}) {
+/* ==================== Helpers de registro en Sheets (igual) ==================== */
+function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
   return {
     orderId,
     cliente: {
@@ -558,8 +569,7 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
     pago: {
       metodo:  'Yape/Plin',
       numero:  YAPE,
-      titular: NOMBRE_TITULAR,
-      voucherUrl: voucherUrl || ''   // 👈 NUEVO: guardamos URL del voucher
+      titular: NOMBRE_TITULAR
     },
     items: (cart || []).map(it => ({
       name: it.name,
@@ -574,8 +584,6 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
     whatsAppText
   };
 }
-
-// Envío con sendBeacon y fallback (igual que tuyo)
 async function registrarPedidoGSheet(payload) {
   try {
     const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
@@ -601,6 +609,7 @@ async function registrarPedidoGSheet(payload) {
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""});
+  const [voucherFile,setVoucherFile]=useState(null); // NUEVO
 
   useEffect(()=>{
     const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
@@ -619,49 +628,17 @@ function App(){
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
-  // ===== NUEVO: estados del voucher para enviar =====
-  const [voucherFile,setVoucherFile] = useState(null);
-  const [voucherOK,setVoucherOK]     = useState(false);
-  // recibimos cambios desde PaymentBox leyendo el “marcador” oculto
-  useEffect(()=>{
-    const el = document.getElementById('__voucher_state');
-    const obs = new MutationObserver(()=> setVoucherOK(el?.dataset.ok==='1'));
-    if(el){ obs.observe(el,{attributes:true}); }
-    return ()=>obs.disconnect();
-  },[]);
-  // Para obtener el file desde el input del PaymentBox:
-  useEffect(()=>{
-    const input = document.querySelector('input[type="file"][accept^="image"]');
-    function onChange(e){ setVoucherFile(e.target.files?.[0]||null); }
-    if(input){ input.addEventListener('change', onChange); }
-    return ()=> input && input.removeEventListener('change', onChange);
-  },[]);
-
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
-
-    // === NUEVO: validar voucher antes de continuar ===
-    if(!voucherOK || !voucherFile){
+    // Bloqueamos si no hay voucher válido
+    if(!voucherFile){
       toast("Adjunta un voucher válido de Yape/Plin");
       return;
     }
+    // (Opcional) Revalidación rápida antes de enviar
+    const re = await validarVoucher(voucherFile);
+    if(!re.ok){ toast(re.msg); return; }
 
-    // Subimos voucher a Cloudinary
-    let voucherUrl = "";
-    try{
-      const fd = new FormData();
-      fd.append("file", voucherFile);
-      fd.append("upload_preset", CLOUDINARY_PRESET);
-      const r = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
-      const d = await r.json();
-      voucherUrl = d.secure_url || "";
-      if(!voucherUrl) throw new Error("sin url");
-    }catch(_){
-      toast("Error subiendo voucher. Intenta nuevamente.");
-      return;
-    }
-
-    // Continuamos con tu flujo original
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
     const text=buildWhatsApp(cart,effective,total);
@@ -676,8 +653,7 @@ function App(){
         state: effective,
         subtotal,
         total,
-        whatsAppText: decodeURIComponent(text),
-        voucherUrl
+        whatsAppText: decodeURIComponent(text)
       });
       registrarPedidoGSheet(payload);
     }catch(_e){}
@@ -695,7 +671,7 @@ function App(){
     <HeaderMini onSeguir={seguirComprando}/>
     <DatosEntrega state={state} setState={setState}/>
     <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
-    <PaymentBox total={total} canCalc={canCalc}/>
+    <PaymentBox total={total} canCalc={canCalc} onVoucherReady={setVoucherFile}/>
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
       <button onClick={enviar} className="w-full btn-pill text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800">
         Enviar pedido por WhatsApp
