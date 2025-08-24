@@ -562,6 +562,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 }
 
 /* ===================== WhatsApp message builder ===================== */
+
 function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
@@ -587,15 +588,27 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
     }
   });
 
-  L.push("");L.push(`Cliente: ${nombre}`);L.push(`Tel: ${telFmt}`);
+  L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
   L.push(`Dirección: ${distrito} — ${direccion}`);
-  if(referencia)L.push("Referencia: "+referencia);
+  if(referencia) L.push("Referencia: "+referencia);
   L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
-  L.push("");L.push("Delivery: "+soles(DELIVERY));L.push("Total a pagar: "+soles(total));
-  L.push("Forma de pago: Yape/Plin "+YAPE+" — Nombre: "+NOMBRE_TITULAR);
-  L.push("Voucher: "+(voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"));
+
+  // ======= NUEVO BLOQUE "DATOS DE PAGO" (pedido) =======
+  const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
+  L.push("");
+  L.push("Datos de pago:");
+  L.push(`Waffle: ${soles(waffleSubtotal)}`);
+  L.push(`Delivery: ${soles(DELIVERY)}`);
+  L.push(`Total a pagar: ${soles(total)}`);
+  L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
+  L.push("");
+  L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*"); // negrita + mayúsculas
+  L.push("_Atte: Waffle King_");               // cursiva
+  // ================================================
+
   return encodeURIComponent(L.join("\n"));
 }
+
 
 /* ==================== Helpers a Sheets (se mantienen) ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
