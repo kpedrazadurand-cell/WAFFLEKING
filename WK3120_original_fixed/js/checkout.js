@@ -172,7 +172,7 @@ function DatosEntrega({state,setState}){
             <label className="text-sm font-medium">Distrito</label>
             <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
               <option value="">Selecciona distrito</option>
-              {DISTRITOS.map(d=><option key={d} value={d}>{d}</option>)}
+              {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
@@ -187,17 +187,28 @@ function DatosEntrega({state,setState}){
   );
 }
 
+/* ====== PACKS del editor: solo 2 presentaciones (25 / 45) ====== */
 const PACKS=[
-  {id:"classic",name:"Waffle Clásico (1 piso)",base:20,incTop:2,incSir:1},
   {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
-  {id:"king",name:"Waffle King (2 pisos)",base:40,incTop:4,incSir:3},
+  {id:"king",   name:"Waffle King (2 pisos)",  base:45,incTop:4,incSir:3},
 ];
-const TOPS=[
-  {id:"t-platano",name:"Plátano"},{id:"t-fresa",name:"Fresa"},
-  {id:"t-obs",name:"Obsesión"},{id:"t-lentejitas",name:"Lentejitas"},
-  {id:"t-princesa",name:"Princesa"},{id:"t-oreo",name:"Oreo"},
-  {id:"t-morochas",name:"Morochas"},{id:"t-chips",name:"Chips Ahoy"},
+
+/* ====== MASAS para mapping en WhatsApp (y conservar datos) ====== */
+const MASAS = [
+  { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
+  { id:"fitness", name:"Fitness (avena)",           delta:5 },
 ];
+
+const TOPS = [
+  { id:"t-fresa",     name:"Fresa" },
+  { id:"t-platano",   name:"Plátano" },
+  { id:"t-oreo",      name:"Oreo" },
+  { id:"t-sublime",   name:"Sublime" },
+  { id:"t-princesa",  name:"Princesa" },
+  { id:"t-cua",       name:"Cua Cua" },
+  { id:"t-obsesion",  name:"Obsesión" },
+];
+
 const SIROPES=[
   {id:"s-maple",name:"Miel de maple",extra:0},
   {id:"s-fresa",name:"Jarabe de fresa",extra:0},
@@ -205,6 +216,7 @@ const SIROPES=[
   {id:"s-fudge",name:"Fudge",extra:0},
   {id:"s-hers",name:"Hersheys",extra:2},
 ];
+
 const PREMIUM=[
   {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
   {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
@@ -215,11 +227,17 @@ const PREMIUM=[
 
 function EditModal({item, onClose, onSave}){
   const baseItem = JSON.parse(JSON.stringify(item||{}));
-  const [packId,setPackId]=useState(baseItem.packId || "classic");
+
+  // packId inicial seguro (si viene "classic", usa la 1ra opción)
+  const initialPackId = (PACKS.some(p=>p.id===baseItem.packId) ? baseItem.packId : PACKS[0].id);
+  const [packId,setPackId]=useState(initialPackId);
   const pack = PACKS.find(p=>p.id===packId) || PACKS[0];
+
   const [qty,setQty]=useState(baseItem.qty||1);
-  const [tops,setTops]=useState(()=> (baseItem.toppings||[]).map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
-  const [sirs,setSirs]=useState(()=> (baseItem.siropes||[]).map(s=> (SIROPES.find(x=>x.name===s.name)||{}).id).filter(Boolean) );
+  const [tops,setTops]=useState(()=> (baseItem.toppings||[])
+    .map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
+  const [sirs,setSirs]=useState(()=> (baseItem.siropes||[])
+    .map(s=> (SIROPES.find(x=>x.name===s.name)||{}).id).filter(Boolean) );
   const [prem,setPrem]=useState(()=>{
     const m = Object.fromEntries(PREMIUM.map(p=>[p.id,0]));
     (baseItem.premium||[]).forEach(p=>{ const id=(PREMIUM.find(x=>x.name===p.name)||{}).id; if(id) m[id]=p.qty; });
@@ -239,7 +257,14 @@ function EditModal({item, onClose, onSave}){
     const extraSirs = sirsObjs.reduce((a,s)=>a+(s.extra||0),0);
     const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
     const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
-    const unit = base + extraSirs + extraPrem;
+
+    // Conservar masa del ítem (sin UI nueva) para no perder el precio
+    const masaId = baseItem.masaId || null;
+    const masaName = baseItem.masaName || (masaId ? (MASAS.find(m=>m.id===masaId)?.name||"") : "");
+    const masaDelta = Number(baseItem.masaDelta || 0);
+
+    const unit = base + extraSirs + extraPrem + masaDelta;
+
     const updated = {
       ...baseItem,
       name: pack.name,
@@ -251,6 +276,8 @@ function EditModal({item, onClose, onSave}){
       toppings: TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes: sirsObjs,
       premium: premObjs,
+      // conservar masa
+      masaId, masaName, masaDelta,
       unitPrice: unit,
       recipient, notes
     };
@@ -270,7 +297,10 @@ function EditModal({item, onClose, onSave}){
         <div className="p-5 overflow-y-auto space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
-              <button key={p.id} onClick={()=>{setPackId(p.id);setTops([]);setSirs([]);setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));}}
+              <button key={p.id} onClick={()=>{
+                  setPackId(p.id);
+                  setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
+                }}
                 className={"text-left rounded-xl border p-3 "+(p.id===packId?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")}>
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-600">Incluye {p.incTop} toppings + {p.incSir} siropes</div>
@@ -580,6 +610,11 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
   cart.forEach((it,i)=>{
     L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
+
+    // NUEVO: masa antes de toppings (con fallback por si es un item viejo)
+    const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
+    if(masa) L.push("   · Masa: " + masa);
+
     if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
     if(it.siropes?.length)L.push("   · Siropes: "+it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "));
     if(it.premium?.length)L.push("   · Premium: "+it.premium.map(p=>`${p.name} x${p.qty}`).join(", "));
@@ -593,7 +628,7 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   if(referencia) L.push("Referencia: "+referencia);
   L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
 
-  // ======= NUEVO BLOQUE "DATOS DE PAGO" (pedido) =======
+  // ======= DATOS DE PAGO =======
   const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
   L.push("");
   L.push("Datos de pago:");
@@ -602,9 +637,8 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   L.push(`Total a pagar: ${soles(total)}`);
   L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
   L.push("");
-  L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*"); // negrita + mayúsculas
-  L.push("_Atte: Waffle King_");               // cursiva
-  // ================================================
+  L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*");
+  L.push("_Atte: Waffle King_");
 
   return encodeURIComponent(L.join("\n"));
 }
