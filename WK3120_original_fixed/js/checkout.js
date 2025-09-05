@@ -1,7 +1,7 @@
 /* global React, ReactDOM */
 const {useState,useEffect,useRef} = React;
 
-// ======= TU CHECKOUT COMPLETO (para Babel UMD) =======
+// ======= CHECKOUT COMPLETO =======
 const LOGO="assets/logo.png";
 const QR="assets/yape-qr.png";
 const YAPE="957285316";
@@ -187,18 +187,19 @@ function DatosEntrega({state,setState}){
   );
 }
 
-/* ====== PACKS del editor: solo 2 presentaciones (25 / 45) ====== */
+/* ====== PACKS del editor: 2 presentaciones (25 / 45) ====== */
 const PACKS=[
   {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
   {id:"king",   name:"Waffle King (2 pisos)",  base:45,incTop:4,incSir:3},
 ];
 
-/* ====== MASAS para mapping en WhatsApp (y conservar datos) ====== */
+/* ====== MASAS (para editor + WhatsApp) ====== */
 const MASAS = [
   { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
   { id:"fitness", name:"Fitness (avena)",           delta:5 },
 ];
 
+/* ====== LISTAS (actualizadas) ====== */
 const TOPS = [
   { id:"t-fresa",     name:"Fresa" },
   { id:"t-platano",   name:"Plátano" },
@@ -233,6 +234,9 @@ function EditModal({item, onClose, onSave}){
   const [packId,setPackId]=useState(initialPackId);
   const pack = PACKS.find(p=>p.id===packId) || PACKS[0];
 
+  // === NUEVO: estado de masa en el editor (usa la del item; si no, "clasica") ===
+  const [masaId, setMasaId] = useState(baseItem.masaId || "clasica");
+
   const [qty,setQty]=useState(baseItem.qty||1);
   const [tops,setTops]=useState(()=> (baseItem.toppings||[])
     .map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
@@ -258,10 +262,9 @@ function EditModal({item, onClose, onSave}){
     const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
     const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
 
-    // Conservar masa del ítem (sin UI nueva) para no perder el precio
-    const masaId = baseItem.masaId || null;
-    const masaName = baseItem.masaName || (masaId ? (MASAS.find(m=>m.id===masaId)?.name||"") : "");
-    const masaDelta = Number(baseItem.masaDelta || 0);
+    // === NUEVO: masa seleccionada en el editor ===
+    const masaDelta = (MASAS.find(m => m.id === masaId)?.delta || 0);
+    const masaName  = (MASAS.find(m => m.id === masaId)?.name  || "Clásica (harina de trigo)");
 
     const unit = base + extraSirs + extraPrem + masaDelta;
 
@@ -276,7 +279,7 @@ function EditModal({item, onClose, onSave}){
       toppings: TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes: sirsObjs,
       premium: premObjs,
-      // conservar masa
+      // === NUEVO: guardar masa editada ===
       masaId, masaName, masaDelta,
       unitPrice: unit,
       recipient, notes
@@ -295,11 +298,14 @@ function EditModal({item, onClose, onSave}){
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
+          {/* PACKS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
               <button key={p.id} onClick={()=>{
                   setPackId(p.id);
                   setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
+                  // Resetea masa como en la primera página
+                  setMasaId("clasica");
                 }}
                 className={"text-left rounded-xl border p-3 "+(p.id===packId?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")}>
                 <div className="font-medium">{p.name}</div>
@@ -308,6 +314,32 @@ function EditModal({item, onClose, onSave}){
             ))}
           </div>
 
+          {/* TIPO DE MASA */}
+          <div>
+            <div className="text-sm font-medium mb-1">Tipo de masa</div>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {MASAS.map(m => {
+                const active = masaId === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={()=> setMasaId(m.id)}
+                    className={
+                      "text-left rounded-xl border px-3 py-2 " +
+                      (active ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white")
+                    }
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{m.name}</span>
+                      {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* CANTIDAD */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Cantidad</span>
             <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
@@ -315,6 +347,7 @@ function EditModal({item, onClose, onSave}){
             <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>q+1)}>+</button>
           </div>
 
+          {/* TOPPINGS */}
           <div>
             <div className="text-sm font-medium mb-1">Toppings ({(tops||[]).length}/{limits.incTop} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -332,6 +365,7 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
+          {/* SIROPES */}
           <div>
             <div className="text-sm font-medium mb-1">Siropes ({(sirs||[]).length}/{limits.incSir} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -349,6 +383,7 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
+          {/* PREMIUM */}
           <div>
             <div className="text-sm font-medium">Toppings Premium</div>
             <div className="grid md:grid-cols-2 gap-2">
@@ -370,6 +405,7 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
+          {/* DEDICATORIA */}
           <div>
             <div className="text-sm font-medium">Dedicatoria (opcional)</div>
             <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Para Mackey..." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
@@ -424,6 +460,19 @@ function CartList({cart, setCart, canCalc}){
 
               {openAll && (
                 <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
+                  {/* NUEVO: Masa (fila completa) */}
+                  <div className="sm:col-span-3">
+                    <div className="font-semibold">Masa</div>
+                    <div>{
+                      (() => {
+                        const fallback = "Clásica (harina de trigo)";
+                        if (it.masaName) return it.masaName;
+                        if (it.masaId) return (MASAS.find(m => m.id === it.masaId)?.name || fallback);
+                        return fallback;
+                      })()
+                    }</div>
+                  </div>
+
                   <div><div className="font-semibold">Toppings</div><div>{(it.toppings&&it.toppings.length)?it.toppings.join(", "):"—"}</div></div>
                   <div><div className="font-semibold">Siropes</div><div>{(it.siropes&&it.siropes.length)?it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "):"—"}</div></div>
                   <div><div className="font-semibold">Premium</div><div>{(it.premium&&it.premium.length)?it.premium.map(p=>`${p.name} x${p.qty}`).join(", "):"—"}</div></div>
@@ -519,7 +568,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        {/* ==== CAMBIO RESPONSIVO: apilado en móvil + botones full-width ==== */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
@@ -611,7 +659,7 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   cart.forEach((it,i)=>{
     L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
 
-    // NUEVO: masa antes de toppings (con fallback por si es un item viejo)
+    // Masa antes de toppings (con fallback si es item viejo)
     const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
     if(masa) L.push("   · Masa: " + masa);
 
@@ -824,7 +872,6 @@ function App(){
     }catch(_e){}
 
     if (isMobile) {
-      // Solo https para minimizar prompts del SO
       window.location.href = waWeb;
     } else {
       if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
@@ -873,3 +920,4 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
