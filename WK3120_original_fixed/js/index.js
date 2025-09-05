@@ -1,45 +1,30 @@
 const {useState,useMemo,useEffect}=React;
 const LOGO="assets/logo.png";
-
-/* === PACKS: ahora solo 2 presentaciones, con 25 y 45 === */
 const PACKS=[
-  {id:"special",name:"Waffle Especial (1 piso)",price:25,incTop:3,incSir:2,desc:"Incluye 3 toppings + 2 siropes + dedicatoria"},
-  {id:"king",name:"Waffle King (2 pisos)",price:45,incTop:4,incSir:3,desc:"Incluye 4 toppings + 3 siropes + dedicatoria"},
+ {id:"classic",name:"Waffle Clásico (1 piso)",price:20,incTop:2,incSir:1,desc:"Incluye 2 toppings + 1 sirope + dedicatoria"},
+ {id:"special",name:"Waffle Especial (1 piso)",price:25,incTop:3,incSir:2,desc:"Incluye 3 toppings + 2 siropes + dedicatoria"},
+ {id:"king",name:"Waffle King (2 pisos)",price:40,incTop:4,incSir:3,desc:"Incluye 4 toppings + 3 siropes + dedicatoria"},
 ];
-
-/* === MASAS: nueva sección (Clásica / Fitness (avena) +S/5) === */
-const MASAS = [
-  { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness", name:"Fitness (avena)", delta:5 },
-];
-
-/* === TOPPINGS incluidos: reemplazados por tu nueva lista === */
 const TOPS=[
-  {id:"t-fresa",name:"Fresa"},
-  {id:"t-platano",name:"Plátano"},
-  {id:"t-oreo",name:"Oreo"},
-  {id:"t-sublime",name:"Sublime"},
-  {id:"t-princesa",name:"Princesa"},
-  {id:"t-cua",name:"Cua Cua"},
-  {id:"t-obsesion",name:"Obsesión"},
+ {id:"t-platano",name:"Plátano"},{id:"t-fresa",name:"Fresa"},
+ {id:"t-obs",name:"Obsesión"},{id:"t-lentejitas",name:"Lentejitas"},
+ {id:"t-princesa",name:"Princesa"},{id:"t-oreo",name:"Oreo"},
+ {id:"t-morochas",name:"Morochas"},{id:"t-chips",name:"Chips Ahoy"},
 ];
-
-/* === Siropes / Premium se mantienen igual (misma lógica y estilo) === */
 const SIROPES=[
-  {id:"s-maple",name:"Miel de maple",extra:0},
-  {id:"s-fresa",name:"Jarabe de fresa",extra:0},
-  {id:"s-dulce",name:"Dulce de leche",extra:0},
-  {id:"s-fudge",name:"Fudge",extra:0},
-  {id:"s-hers",name:"Hersheys",extra:2},
+ {id:"s-maple",name:"Miel de maple",extra:0},
+ {id:"s-fresa",name:"Jarabe de fresa",extra:0},
+ {id:"s-dulce",name:"Dulce de leche",extra:0},
+ {id:"s-fudge",name:"Fudge",extra:0},
+ {id:"s-hers",name:"Hersheys",extra:2},
 ];
 const PREMIUM=[
-  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
-  {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
-  {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
-  {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
-  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
+ {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
+ {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
+ {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
+ {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
+ {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
-
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
@@ -58,8 +43,8 @@ function Header({count}){
       </div>
       <div className="mt-2 w-full">
         <div className="rounded-full border border-amber-300 bg-amber-50 text-amber-900 text-sm px-4 py-2">
-           Pedidos con <b>24h</b> de anticipación.
-        </div>
+           Pedidos con <b>24h</b> de anticipación. <b><i>(Entregas solo fines de semana)</i></b>
+      </div>
       </div>
     </div>
   </header>);
@@ -88,27 +73,17 @@ function App(){
   const [rec,setRec]=useState("");
   const [count,setCount]=useCartCount();
   const [qty,setQty]=useState(1);
-
-  /* === estado de masa (nuevo) === */
-  const [masaId,setMasaId]=useState("clasica");
-
   const locked=!pack;
 
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
     setNotes(""); setRec("");
-    setMasaId("clasica"); /* reset por pack */
   },[packId]);
 
   const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
   const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
-
-  /* === delta por masa === */
-  const masaDelta = (MASAS.find(m=>m.id===masaId)?.delta || 0);
-
-  /* === mismo cálculo + delta de masa === */
-  const unit=locked?0:((pack?.price||0)+masaDelta+sirsExtra+premCost);
+  const unit=locked?0:((pack?.price||0)+sirsExtra+premCost);
   const total=locked?0:(unit*qty);
 
   function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
@@ -123,8 +98,6 @@ function App(){
     if(requirePack())return;
     if(qty<1){toast("Cantidad inválida");return;}
     const item={name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,
-      /* guardo masa (no afecta el checkout si no la usas aún) */
-      masaId, masaName:(MASAS.find(m=>m.id===masaId)?.name||"Clásica"), masaDelta,
       toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
       premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
@@ -135,7 +108,7 @@ function App(){
     localStorage.setItem("wk_cart",JSON.stringify(cart));
     setPack(null); setTops([]); setSirs([]);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
-    setNotes(""); setRec(""); setMasaId("clasica");
+    setNotes(""); setRec("");
     setCount(cart.reduce((a,b)=>a+b.qty,0));
     toast("Agregado al carrito");
   }
@@ -144,7 +117,6 @@ function App(){
     <Header count={count}/>
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-      {/* === 1) Elige tu waffle (ahora 2 tarjetas) === */}
       <Block title="Elige tu waffle">
         <div className="grid md:grid-cols-3 gap-4">
           {PACKS.map(p=>(
@@ -161,26 +133,6 @@ function App(){
         {!pack && <div className="mt-2 text-xs text-slate-600">Selecciona un waffle para desbloquear los siguientes pasos.</div>}
       </Block>
 
-      {/* === 2) Tipo de masa (nuevo bloque; mismo estilo de botones) === */}
-      <Block title="Tipo de masa">
-        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
-          {MASAS.map(m=>{
-            const active = masaId===m.id;
-            return (
-              <button key={m.id} onClick={()=>setMasaId(m.id)}
-                className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")}
-                title={locked?"Debes seleccionar un waffle para continuar":""}>
-                <div className="flex items-center justify-between">
-                  <span>{m.name}</span>
-                  {m.delta>0 && <span className="text-xs">+{soles(m.delta)}</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </Block>
-
-      {/* === 3) Toppings incluidos (misma lógica; lista nueva) === */}
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
@@ -191,7 +143,6 @@ function App(){
         </div>
       </Block>
 
-      {/* === 4) Siropes incluidos (igual) === */}
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=(pack?.incSir||0));
@@ -203,8 +154,7 @@ function App(){
         <p className="text-xs text-slate-600 mt-2">* Hersheys agrega S/ 2.00 al total aunque esté dentro del pack.</p>
       </Block>
 
-      {/* === 5) Premium (mismo bloque; solo título cambia a “(opcional)” ) === */}
-      <Block title="Toppings Premium (opcional)">
+      <Block title="Toppings Premium">
         <div className={"grid md:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {PREMIUM.map(p=>(
             <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2" title={locked?"Debes seleccionar un waffle para continuar":""}>
@@ -221,7 +171,6 @@ function App(){
         </div>
       </Block>
 
-      {/* === Dedicatoria / Totales (idénticos) === */}
       <Block title="Dedicatoria y destinatario">
         <div className="grid sm:grid-cols-2 gap-3">
           <div><label className="text-sm font-medium">Para (nombre)</label>
