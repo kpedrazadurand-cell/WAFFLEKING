@@ -1,5 +1,6 @@
 const {useState,useMemo,useEffect}=React;
 const LOGO="assets/logo.png";
+
 const PACKS = [
   { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria" },
   { id:"king",    name:"Waffle King (2 pisos)",    price:45, incTop:4, incSir:3, desc:"Incluye 4 toppings + 3 siropes + dedicatoria" },
@@ -27,6 +28,7 @@ const SIROPES=[
  {id:"s-fudge",name:"Fudge",extra:0},
  {id:"s-hers",name:"Hersheys",extra:2},
 ];
+
 const PREMIUM=[
  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
  {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
@@ -34,17 +36,29 @@ const PREMIUM=[
  {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
+
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
-function useCartCount(){const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));useEffect(()=>{const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));window.addEventListener("storage",on);return()=>window.removeEventListener("storage",on)},[]);return[c,setC]}
+function useCartCount(){
+  const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+  useEffect(()=>{
+    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+    window.addEventListener("storage",on);
+    return()=>window.removeEventListener("storage",on)
+  },[]);
+  return[c,setC]
+}
 
 function Header({count}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
         <img src={LOGO} className="h-10 w-10 rounded-xl ring-1 ring-amber-200 object-contain"/>
-        <div className="leading-4"><h1 className="font-extrabold text-lg">Waffle King</h1><p className="text-xs text-slate-700">Pedidos online — Lima Norte</p></div>
+        <div className="leading-4">
+          <h1 className="font-extrabold text-lg">Waffle King</h1>
+          <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
+        </div>
         <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
           {count>0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
@@ -52,8 +66,8 @@ function Header({count}){
       </div>
       <div className="mt-2 w-full">
         <div className="rounded-full border border-amber-300 bg-amber-50 text-amber-900 text-sm px-4 py-2">
-  Pedidos con <b>24h</b> de anticipación.
-      </div>
+          Pedidos con <b>24h</b> de anticipación.
+        </div>
       </div>
     </div>
   </header>);
@@ -75,25 +89,29 @@ function App(){
 
   const [packId,setPack]=useState(null);
   const pack=useMemo(()=>PACKS.find(p=>p.id===packId),[packId]);
+
   const [tops,setTops]=useState([]);
-  const [masaId, setMasaId] = useState("clasica");
+  const [masaId, setMasaId] = useState(null);
   const [sirs,setSirs]=useState([]);
   const [prem,setPrem]=useState(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
   const [notes,setNotes]=useState("");
   const [rec,setRec]=useState("");
   const [count,setCount]=useCartCount();
   const [qty,setQty]=useState(1);
+
   const locked=!pack;
 
   useEffect(()=>{
-    setTops([]);setSirs([]);setQty(1);setMasaId("clasica");
+    setTops([]); setSirs([]); setQty(1);
+    setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
     setNotes(""); setRec("");
   },[packId]);
 
   const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
   const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
-  const masaDelta = (MASAS.find(m => m.id === masaId)?.delta || 0);
+  const masaDelta = masaId ? (MASAS.find(m => m.id === masaId)?.delta || 0) : 0;
+
   const unit = locked ? 0 : ((pack?.price || 0) + masaDelta + sirsExtra + premCost);
   const total=locked?0:(unit*qty);
 
@@ -107,19 +125,40 @@ function App(){
 
   function add(){
     if(requirePack())return;
+    if (!masaId) {toast("Selecciona el tipo de masa"); return;}
     if(qty<1){toast("Cantidad inválida");return;}
-    const item={name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica"),masaDelta,
+
+    const item={
+      name:pack.name,
+      packId:pack.id,
+      basePrice:pack.price,
+      incTop:pack.incTop,
+      incSir:pack.incSir,
+      masaId,
+      masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica"),
+      masaDelta,
       toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
       premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
-      recipient:rec, notes:notes,
-      unitPrice:unit,qty:qty};
+      recipient:rec,
+      notes:notes,
+      unitPrice:unit,
+      qty:qty
+    };
+
     const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
     cart.push(item);
     localStorage.setItem("wk_cart",JSON.stringify(cart));
-    setPack(null); setTops([]); setSirs([]);
-    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
-    setNotes(""); setRec("");
+
+    setPack(null);
+    setTops([]);
+    setSirs([]);
+    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
+    setQty(1);
+    setNotes("");
+    setRec("");
+    setMasaId(null); // limpiar masa tras agregar
+
     setCount(cart.reduce((a,b)=>a+b.qty,0));
     toast("Agregado al carrito");
   }
@@ -129,13 +168,15 @@ function App(){
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
       <Block title="Elige tu waffle">
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-3">
           {PACKS.map(p=>(
             <button key={p.id} onClick={()=>setPack(p.id)}
               className={"text-left rounded-2xl border p-4 w-full "+(p.id===packId?"border-amber-300 bg-white":"border-slate-200 bg-white/80 hover:bg-white")}>
               <div className="flex items-start justify-between">
-                <div><h4 className="font-semibold">{p.name}</h4>
-                  <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p></div>
+                <div>
+                  <h4 className="font-semibold">{p.name}</h4>
+                  <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
+                </div>
                 <div className="font-bold">{soles(p.price)}</div>
               </div>
             </button>
@@ -145,29 +186,29 @@ function App(){
       </Block>
 
       <Block title="Tipo de masa">
-  <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
-    {MASAS.map(m => {
-      const active = masaId === m.id;
-      return (
-        <button
-          key={m.id}
-          onClick={()=> setMasaId(m.id)}
-          className={
-            "text-left rounded-xl border px-3 py-2 " +
-            (active ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white")
-          }
-          title={locked ? "Debes seleccionar un waffle para continuar" : ""}
-        >
-          <div className="flex items-center justify-between">
-            <span>{m.name}</span>
-            {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
-          </div>
-        </button>
-      );
-    })}
-  </div>
-</Block>
-         
+        <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
+          {MASAS.map(m => {
+            const active = masaId === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={()=> setMasaId(m.id)}
+                className={
+                  "text-left rounded-xl border px-3 py-2 " +
+                  (active ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white")
+                }
+                title={locked ? "Debes seleccionar un waffle para continuar" : ""}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{m.name}</span>
+                  {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Block>
+
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
@@ -237,5 +278,5 @@ function App(){
     </main>
   </div>);
 }
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
