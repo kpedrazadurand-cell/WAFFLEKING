@@ -64,16 +64,16 @@ function Header({count}){
             <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
           </div>
 
-          {/* Carrito: fondo blanco + borde dorado (forzado) */}
+          {/* Carrito: fondo BLANCO + borde dorado forzados */}
           <button
             onClick={()=>location.href='checkout.html'}
-            className="ml-auto relative rounded-full border-2 !border-[#c28432] !bg-white p-2 hover:!bg-white"
+            className="ml-auto relative rounded-full p-2"
             aria-label="Ir al carrito"
+            style={{backgroundColor:'#ffffff', border:'2px solid #c28432'}}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6">
               <path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/>
             </svg>
-            {/* Badge: mismo fondo; número en negrita */}
             {count>0 && (
               <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                 {count}
@@ -82,9 +82,12 @@ function Header({count}){
           </button>
         </div>
 
-        {/* Pill 24h: blanco + borde dorado + texto rojo vino (forzado) */}
+        {/* Pill 24h: BLANCO + borde dorado + texto rojo vino forzados */}
         <div className="mt-2 w-full">
-          <div className="rounded-full border-2 !border-[#c28432] !bg-white text-[#b32b11] text-sm px-4 py-2">
+          <div
+            className="rounded-full text-sm px-4 py-2"
+            style={{backgroundColor:'#ffffff', border:'2px solid #c28432', color:'#b32b11'}}
+          >
             Pedidos con <b>24h</b> de anticipación.
           </div>
         </div>
@@ -381,5 +384,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
 
