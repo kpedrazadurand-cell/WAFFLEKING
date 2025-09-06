@@ -152,8 +152,8 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // ===== Selección: fondo blanco + borde 2px marrón intenso (#3a1104)
-  const ACTIVE_BOX = "border-2 border-[#3a1104] bg-white";
+  // ===== Selección: MISMO estilo que los contenedores (border-slate-200 1px + fondo blanco)
+  const ACTIVE_BOX = "border border-slate-200 bg-white";
 
   return (<div>
     <Header count={count}/>
@@ -312,5 +312,6 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
 
