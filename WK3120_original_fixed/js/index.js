@@ -2,6 +2,8 @@
 const {useState,useMemo,useEffect}=React;
 
 const LOGO="assets/logo.png";
+const WELCOME_VIDEO="assets/welcome.mp4";           // ← tu video aquí
+const WELCOME_POSTER="assets/welcome-poster.jpg";   // ← opcional
 
 /* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
@@ -52,6 +54,72 @@ function useCartCount(){
   },[]);
   return[c,setC]
 }
+
+/* ================= Modal de Bienvenida (video izq + mensaje/CTA der) ================= */
+function WelcomeModal({open,onClose,onStart}){
+  // cierre con ESC
+  useEffect(()=>{
+    if(!open) return;
+    function onKey(e){ if(e.key==='Escape'){ onClose?.(); } }
+    window.addEventListener('keydown',onKey);
+    return ()=>window.removeEventListener('keydown',onKey);
+  },[open,onClose]);
+
+  if(!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog" aria-modal="true" aria-labelledby="wk-welcome-title"
+      onClick={(e)=>{ if(e.target===e.currentTarget) onClose?.(); }}
+      style={{background:'rgba(0,0,0,.4)'}}
+    >
+      <div
+        className="bg-white rounded-2xl border-2 shadow-xl w-[min(92vw,680px)]"
+        style={{borderColor:'#c28432'}}
+      >
+        <div className="grid md:grid-cols-[300px,1fr] gap-6 p-5 md:p-6 items-center">
+          {/* VIDEO IZQUIERDA (alto > ancho) */}
+          <div
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[240px] md:w-[300px] shadow-sm"
+            style={{borderColor:'#c28432', aspectRatio:'9 / 16', background:'#fff'}}
+          >
+            <video
+              src={WELCOME_VIDEO}
+              poster={WELCOME_POSTER}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* TEXTO + CTA DERECHA */}
+          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4">
+            <h2 id="wk-welcome-title" className="font-bold text-2xl md:text-3xl text-[#b32b11] leading-tight text-center md:text-left">
+              ¡Gracias por unirte a la familia Waffle King!
+            </h2>
+            <p className="text-slate-800 text-sm md:text-base text-center md:text-left">
+              Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
+            </p>
+            <button
+              onClick={onStart}
+              className="mt-1 inline-flex items-center justify-center rounded-full px-5 h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
+              style={{background:'#3a1104'}}
+              onMouseDown={(e)=>e.currentTarget.style.background='#2a0c02'}
+              onMouseUp={(e)=>e.currentTarget.style.background='#3a1104'}
+              onMouseLeave={(e)=>e.currentTarget.style.background='#3a1104'}
+            >
+              Empezar pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ===================================================================== */
 
 function Header({count}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
@@ -127,6 +195,22 @@ function App(){
   // preview de imagen
   const [preview,setPreview]=useState(null); // {src,title} | null
 
+  // ====== Welcome modal: mostrar solo 1 vez por sesión ======
+  const [welcomeOpen,setWelcomeOpen]=useState(false);
+  useEffect(()=>{
+    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
+    if(!seen){
+      setWelcomeOpen(true);
+      sessionStorage.setItem('wk_welcome_seen','1');
+    }
+  },[]);
+
+  // Scroll a "Elige tu waffle"
+  function goToPacks(){
+    const el = document.getElementById('packs-start');
+    if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+  }
+
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
@@ -175,11 +259,20 @@ function App(){
   }
 
   return (<div>
+    {/* MODAL DE BIENVENIDA */}
+    <WelcomeModal
+      open={welcomeOpen}
+      onClose={()=>setWelcomeOpen(false)}
+      onStart={()=>{ setWelcomeOpen(false); goToPacks(); }}
+    />
+
     <Header count={count}/>
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
       {/* ============ PACKS ============ */}
       <Block title="Elige tu waffle">
+        {/* ancla para scroll */}
+        <div id="packs-start" />
         <div className="grid md:grid-cols-2 gap-3">
           {PACKS.map(p=>(
             <button
@@ -364,5 +457,3 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
-
