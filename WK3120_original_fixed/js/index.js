@@ -152,10 +152,8 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // ===== Selección: borde marrón intenso + fondo "difuminado" (gradiente muy suave)
-  // Usa el mismo color del head (#3a1104) pero con opacidad baja para no opacar el texto.
-  const ACTIVE_BOX =
-    "border-2 border-[#3a1104] bg-[linear-gradient(180deg,rgba(58,17,4,0.06),rgba(58,17,4,0.1)),#ffffff]";
+  // ===== Selección: fondo blanco + borde 2px marrón intenso (#3a1104)
+  const ACTIVE_BOX = "border-2 border-[#3a1104] bg-white";
 
   return (<div>
     <Header count={count}/>
