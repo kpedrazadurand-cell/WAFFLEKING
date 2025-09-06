@@ -152,8 +152,11 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // Selección con el MISMO borde que los contenedores: 1px slate-200 y fondo blanco
+  // Selección con MISMO borde que contenedores: 1px slate-200 y fondo blanco
   const ACTIVE_BOX = "border border-slate-200 bg-white";
+
+  // NOTA: quitamos pointer-events-none; dejamos solo opacidad para que no bloquee clics
+  const lockCls = locked ? "opacity-60" : "";
 
   return (<div>
     <Header count={count}/>
@@ -199,7 +202,7 @@ function App(){
       </Block>
 
       <Block title="Tipo de masa">
-        <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
+        <div className={`grid sm:grid-cols-2 gap-2 ${lockCls}`}>
           {MASAS.map(m => {
             const active = masaId === m.id;
             return (
@@ -223,7 +226,7 @@ function App(){
       </Block>
 
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
-        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+        <div className={`grid sm:grid-cols-2 gap-2 ${lockCls}`}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
             return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?ACTIVE_BOX:"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
@@ -237,7 +240,7 @@ function App(){
       </Block>
 
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
-        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+        <div className={`grid sm:grid-cols-2 gap-2 ${lockCls}`}>
           {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=(pack?.incSir||0));
             return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?ACTIVE_BOX:"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
@@ -252,7 +255,7 @@ function App(){
       </Block>
 
       <Block title="Toppings Premium (opcional)">
-        <div className={"grid md:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+        <div className={`grid md:grid-cols-2 gap-2 ${lockCls}`}>
           {PREMIUM.map(p=>(
             <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2" title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
