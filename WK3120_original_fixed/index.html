@@ -14,8 +14,9 @@
 
   <style>
     :root{
-      --wk-brown:   #6c1e00; /* marrón intenso (HEADER) */
-      --wk-mustard: #c28432; /* mostaza (FONDO general, no tocar) */
+      --wk-brown:   #4a1700; /* marrón más intenso (HEADER) */
+      --wk-mustard: #c28432; /* mostaza (FONDO general) */
+      --wk-gold:    #c28432; /* dorado para bordes/accent */
     }
 
     /* Fondo general (mostaza se mantiene) */
@@ -26,7 +27,7 @@
     }
 
     /* ===== Header =====
-       Lo hacemos marrón intenso SÓLIDO y sin blur */
+       Marrón intenso sólido, sin blur */
     header.glass{
       background: var(--wk-brown) !important;
       backdrop-filter: none !important;
@@ -34,15 +35,17 @@
 
     /* Título y subtítulo en blanco */
     header.glass .leading-4 h1{ color:#ffffff !important; }
-    header.glass .leading-4 p { color:#ffffff !important; opacity: .95; }
+    header.glass .leading-4 p { color:#ffffff !important; opacity:.95; }
 
     /* Ícono del carrito en blanco para contraste */
-    header.glass button svg{ color: #ffffff !important; }
+    header.glass button svg{ color:#ffffff !important; }
 
-    /* Píldora "24h": relleno blanco y texto negro (borde amber se mantiene) */
+    /* Píldora "24h": relleno blanco, texto negro, borde dorado y más grueso */
     header.glass .rounded-full.border-amber-300.bg-amber-50{
-      background: #ffffff !important;
-      color: #111111 !important;
+      background:#ffffff !important;
+      color:#111111 !important;
+      border-color: var(--wk-gold) !important;
+      border-width: 2px !important;   /* borde más notorio */
     }
 
     /* Utilidades existentes */
@@ -67,3 +70,4 @@
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
+
