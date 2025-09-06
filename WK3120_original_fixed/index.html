@@ -5,59 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
-
-  <!-- Tailwind + React -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* ===== Paleta (de tu imagen) ===== */
     :root{
-      --wk-red:   #b32b11;
-      --wk-brown: #4e3427;
-      --wk-cream: #fff0d6;
-      --wk-burnt: #6c1e00;  /* fondo principal (debajo del header) */
-      --wk-gold:  #c28432;  /* fondo del header */
+      --wk-brown: #6c1e00;   /* marrón intenso */
+      --wk-mustard: #c28432; /* mostaza */
+      --wk-cream: #fff0d6;   /* crema suave (para detalles si deseas) */
     }
 
-    html, body { height: 100%; }
+    /* Tipografía y helpers que ya usabas */
+    body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto}
+    .glass{background:rgba(255,255,255,.65);backdrop-filter:blur(10px)}
+    .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
+    .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
+    .btn-disabled{opacity:.5;cursor:not-allowed}
 
-    /* Fondo general: marrón intenso sólido */
+    /* Toast tal cual */
+    .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    /* ======= NUEVO: pintado del header en marrón con difuminado ======= */
+    .header-paint{
+      position:fixed;
+      inset:0 0 auto 0;   /* top:0, left:0, right:0 */
+      height:140px;       /* alto suficiente para cubrir el header y su sombra */
+      pointer-events:none;
+      z-index:0;
+      /* Marrón que se disuelve hacia abajo (transparente) */
+      background: linear-gradient(
+        to bottom,
+        rgba(108, 30, 0, 0.95) 0%,
+        rgba(108, 30, 0, 0.88) 35%,
+        rgba(108, 30, 0, 0.70) 60%,
+        rgba(108, 30, 0, 0.00) 100%
+      );
+    }
+
+    /* ======= NUEVO: fondo mostaza para todo el resto ======= */
     body{
-      background: var(--wk-burnt);
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
+      background: var(--wk-mustard);
+      min-height: 100vh;
     }
-
-    /* Header con mostaza sólido (sin degradados) */
-    .glass{
-      background: var(--wk-gold) !important;
-      backdrop-filter: none !important;
-    }
-
-    .shadow-soft{ box-shadow: 0 12px 32px rgba(31,41,55,.08); }
-    .btn-pill{ border-radius: 9999px; padding: .6rem 1.1rem; font-weight: 600; }
-    .btn-disabled{ opacity: .5; cursor: not-allowed; }
-
-    .toast{
-      position: fixed; bottom: 16px; left: 50%;
-      transform: translate(-50%,16px);
-      background: var(--wk-burnt); color:#fff;
-      padding: 10px 14px; border-radius: 12px;
-      opacity: 0; transition: all .25s; z-index: 60;
-    }
-    .toast.show{ opacity: 1; transform: translate(-50%,0); }
   </style>
 </head>
+<body>
+  <!-- Capa de color para el header (difuminado marrón) -->
+  <div class="header-paint"></div>
 
-<body class="min-h-screen">
-  <div id="root"></div>
+  <!-- Tu app -->
+  <div id="root" class="relative z-10"></div>
 
-  <!-- Toast reutilizable -->
+  <!-- Toast -->
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
 
-  <!-- Tu app React -->
+  <!-- Tu JS (sin cambios) -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
+
