@@ -152,8 +152,8 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // ===== Selección: MISMO estilo que los contenedores (border-slate-200 1px + fondo blanco)
-  const ACTIVE_BOX = "border border-slate-200 bg-white";
+  // ===== Selección: fondo blanco + borde 2px NEGRO
+  const ACTIVE_BOX = "border-2 border-black bg-white";
 
   return (<div>
     <Header count={count}/>
