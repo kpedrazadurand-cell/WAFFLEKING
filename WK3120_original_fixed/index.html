@@ -13,13 +13,13 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* ===== Paleta de tu imagen ===== */
+    /* ===== Paleta (de tu imagen) ===== */
     :root{
       --wk-red:   #b32b11;
       --wk-brown: #4e3427;
       --wk-cream: #fff0d6;
-      --wk-burnt: #6c1e00;  /* marrón intenso (fondo inferior) */
-      --wk-gold:  #c28432;  /* mostaza (banda superior) */
+      --wk-burnt: #6c1e00;  /* fondo principal (debajo del header) */
+      --wk-gold:  #c28432;  /* fondo del header */
     }
 
     html, body { height: 100%; }
@@ -30,18 +30,9 @@
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
     }
 
-    /* Banda superior sólida en mostaza, sin degradados */
-    .wk-topband{
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: clamp(160px, 22vw, 260px);  /* responsivo: ~160–260px */
-      background: var(--wk-gold);
-      z-index: -1; /* queda detrás del contenido */
-    }
-
-    /* Header crema (sustituye el “glass”) */
+    /* Header con mostaza sólido (sin degradados) */
     .glass{
-      background: var(--wk-cream) !important;
+      background: var(--wk-gold) !important;
       backdrop-filter: none !important;
     }
 
@@ -61,9 +52,6 @@
 </head>
 
 <body class="min-h-screen">
-  <!-- Banda superior (mostaza) detrás del contenido -->
-  <div class="wk-topband" aria-hidden="true"></div>
-
   <div id="root"></div>
 
   <!-- Toast reutilizable -->
@@ -73,5 +61,3 @@
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
-
-
