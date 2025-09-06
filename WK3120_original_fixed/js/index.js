@@ -225,9 +225,14 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome una vez por sesión
+  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
+    try {
+      const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
+      const cartHasItems = Array.isArray(cart) && cart.length > 0;
+      if (cartHasItems) return; // no mostrar si hay carrito pendiente
+    } catch(e){}
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
