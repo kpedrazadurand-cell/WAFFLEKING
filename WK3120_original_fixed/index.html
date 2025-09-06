@@ -13,41 +13,45 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* ===== Paleta consistente con checkout ===== */
+    /* ===== Paleta (coincide con checkout) ===== */
     :root{
       --wk-brown-deep:#3a1104;   /* encabezado oscuro */
-      --wk-gold:#c28432;         /* dorado mostaza (fondo) */
-      --wk-cream:#fff0d6;        /* crema suave para la pill */
+      --wk-gold:#c28432;         /* dorado (bordes / acentos) */
+      --wk-cream:#fff0d6;        /* crema (fondo de página y pill) */
     }
 
     body{
       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
-      background: var(--wk-gold);  /* mismo fondo mostaza que checkout */
+      background: var(--wk-cream);   /* <— ahora crema */
       min-height:100vh;
     }
 
-    /* Header: forzar el mismo marrón intenso y texto blanco */
+    /* Header marrón intenso + texto blanco */
     header.glass{
       background: var(--wk-brown-deep) !important;
       color:#fff !important;
       backdrop-filter:none !important;
       border-bottom:0 !important;
     }
-    header.glass h1,
-    header.glass p{ color:#fff !important; }
+    header.glass h1, header.glass p{ color:#fff !important; }
 
-    /* Pill “Pedidos con 24h…” igual en ambas páginas */
+    /* Pill “Pedidos con 24h…” */
     header.glass .rounded-full{
-      background: var(--wk-cream) !important;  /* crema */
-      border: 2px solid var(--wk-gold) !important; /* dorado más grueso */
-      color:#111 !important;                   /* texto oscuro */
+      background: var(--wk-cream) !important;
+      border: 2px solid var(--wk-gold) !important;
+      color:#111 !important;
     }
 
-    /* Botón del carrito en header oscuro */
+    /* Botón carrito y badge */
     header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
     header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
+    header.glass .bg-amber-600{
+      background-color: var(--wk-gold) !important; /* badge mostaza */
+      color:#3a1104 !important;
+      border:1px solid var(--wk-cream);
+    }
 
-    /* Restante utilería */
+    /* Utilería */
     .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
