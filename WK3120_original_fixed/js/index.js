@@ -108,11 +108,20 @@ function WelcomeModal({open,onClose,onStart}){
               boxShadow:'0 8px 16px rgba(58,17,4,.06)'
             }}
           >
+            {/* VIDEO SIN PIP / SIN CONTROLES / PASIVO */}
             <video
               src={WELCOME_VIDEO}
               poster={WELCOME_POSTER}
-              autoPlay muted loop playsInline
+              autoPlay
+              muted
+              loop
+              playsInline
+              disablePictureInPicture
+              controls={false}
+              controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+              onContextMenu={(e)=>e.preventDefault()}
               className="w-full h-full object-contain bg-white"
+              style={{ pointerEvents:'none', userSelect:'none' }}
             />
           </div>
 
@@ -281,6 +290,9 @@ function App(){
     setNotes(""); setRec("");
     setCount(cart.reduce((a,b)=>a+b.qty,0));
     toast("Agregado al carrito");
+
+    // ⬆️ Mover scroll al inicio tras agregar
+    setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 50);
   }
 
   return (<div>
@@ -480,3 +492,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
