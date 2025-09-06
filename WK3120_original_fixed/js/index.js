@@ -82,10 +82,17 @@ function Pill({used,total,label}){
 }
 
 function Block({title,children,extra}){
-  return <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
-    <div className="flex items-center justify-between mb-2"><h3 className="font-semibold">{title}</h3>{extra}</div>{children}
-  </div>;
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-bold text-slate-800">{title}</h3>
+        {extra}
+      </div>
+      {children}
+    </div>
+  );
 }
+
 
 /* ===== Modal de imagen referencial ===== */
 function ImagePreview({src,title,onClose}){
