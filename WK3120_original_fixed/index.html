@@ -15,9 +15,10 @@
   <style>
     /* ===== Paleta unificada ===== */
     :root{
-      --wk-brown-deep:#3a1104;   /* encabezado */
+      --wk-brown-deep:#3a1104;   /* encabezado + tonos oscuros */
       --wk-gold:#c28432;         /* dorado (bordes / acentos) */
       --wk-cream:#fff0d6;        /* crema (fondo de página y pill) */
+      --wk-title-red:#b32b11;    /* rojo de los títulos */
     }
 
     body{
@@ -35,20 +36,29 @@
     }
     header.glass h1, header.glass p{ color:#fff !important; }
 
-    /* Pill “Pedidos con 24h…” (SOLAMENTE ese pill, no el badge) */
-    header.glass .mt-2 .rounded-full{
+    /* Pill “Pedidos con 24h…” */
+    header.glass .rounded-full{
       background: var(--wk-cream) !important;
       border: 2px solid var(--wk-gold) !important;
       color:#111 !important;
     }
 
-    /* Carrito y hover del botón */
+    /* Carrito (botón) y badge */
     header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
     header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
 
-    /* Badge del carrito: color de los títulos (#b32b11) y texto blanco */
+    /* Botón del carrito: fondo crema + borde dorado (no cambiar) */
+    header.glass button[aria-label="Ir al carrito"]{
+      background: var(--wk-cream) !important;
+      border: 2px solid var(--wk-gold) !important;
+    }
+    header.glass button[aria-label="Ir al carrito"]:hover{
+      background:#ffe9c0 !important; /* crema un poco más oscuro al hover */
+    }
+
+    /* Badge del número: rojo de títulos + texto blanco */
     header.glass button[aria-label="Ir al carrito"] > span{
-      background:#b32b11 !important;   /* mismo de “Elige tu waffle”, etc. */
+      background: var(--wk-title-red) !important;
       color:#fff !important;
       font-weight:700;
       border:1px solid var(--wk-cream);
@@ -68,14 +78,13 @@
 
     /* ===== TOAST: marrón del header ===== */
     .toast{
-      position:fixed;
-      bottom:16px; left:50%;
+      position:fixed; bottom:16px; left:50%;
       transform:translate(-50%,16px);
       background:#3a1104;           /* marrón del header */
-      color:#fff;                   /* texto blanco */
+      color:#fff;                    /* texto blanco */
       border:2px solid var(--wk-gold); /* borde dorado */
       padding:10px 14px;
-      border-radius:9999px;         /* pill */
+      border-radius:9999px;          /* pill */
       font-weight:700;
       box-shadow:0 10px 20px rgba(58,17,4,.28);
       opacity:0;
