@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
+
+  <!-- Tailwind + React -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -12,67 +14,56 @@
 
   <style>
     :root{
-      --wk-brown:   #6c1e00; /* marrón intenso */
-      --wk-mustard: #c28432; /* mostaza */
-      --wk-gold:    #fff0d6; /* crema/dorado suave */
+      --wk-brown:   #6c1e00; /* marrón intenso (HEADER) */
+      --wk-mustard: #c28432; /* mostaza (FONDO general, no tocar) */
     }
 
-    /* Fuente y utilidades existentes */
-    body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto}
-    .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
-    .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
-    .btn-disabled{opacity:.5;cursor:not-allowed}
-    .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
-    .toast.show{opacity:1;transform:translate(-50%,0)}
-
-    /* Header pintado en marrón con difuminado hacia abajo */
-    .header-paint{
-      position:fixed;
-      inset:0 0 auto 0;
-      height:140px;
-      pointer-events:none;
-      z-index:0;
-      background: linear-gradient(
-        to bottom,
-        rgba(108, 30, 0, 0.95) 0%,
-        rgba(108, 30, 0, 0.88) 35%,
-        rgba(108, 30, 0, 0.70) 60%,
-        rgba(108, 30, 0, 0.00) 100%
-      );
-    }
-
-    /* Fondo general mostaza */
+    /* Fondo general (mostaza se mantiene) */
     body{
       background: var(--wk-mustard);
       min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
     }
 
-    /* El header llevaba .glass con fondo blanco: lo hacemos transparente */
-    header.glass{ background: transparent !important; backdrop-filter: blur(10px); }
+    /* ===== Header =====
+       Lo hacemos marrón intenso SÓLIDO y sin blur */
+    header.glass{
+      background: var(--wk-brown) !important;
+      backdrop-filter: none !important;
+    }
 
-    /* Texto del header en dorado */
-    header.glass .leading-4 h1{ color: var(--wk-gold) !important; }
-    header.glass .leading-4 p { color: var(--wk-gold) !important; opacity:.95; }
+    /* Título y subtítulo en blanco */
+    header.glass .leading-4 h1{ color:#ffffff !important; }
+    header.glass .leading-4 p { color:#ffffff !important; opacity: .95; }
 
-    /* También el ícono del carrito (usa currentColor) */
-    header.glass button{ color: var(--wk-gold); }
-    header.glass button svg{ color: inherit; }
+    /* Ícono del carrito en blanco para contraste */
+    header.glass button svg{ color: #ffffff !important; }
 
-    /* Opcional: el pill “24h” mantiene su estilo original */
+    /* Píldora "24h": relleno blanco y texto negro (borde amber se mantiene) */
+    header.glass .rounded-full.border-amber-300.bg-amber-50{
+      background: #ffffff !important;
+      color: #111111 !important;
+    }
+
+    /* Utilidades existentes */
+    .shadow-soft{ box-shadow: 0 12px 32px rgba(31,41,55,.08); }
+    .btn-pill{ border-radius: 9999px; padding: .6rem 1.1rem; font-weight: 600; }
+    .btn-disabled{ opacity: .5; cursor: not-allowed; }
+
+    .toast{
+      position: fixed; bottom: 16px; left: 50%;
+      transform: translate(-50%,16px);
+      background: #b45309; color:#fff;
+      padding: 10px 14px; border-radius: 12px;
+      opacity: 0; transition: all .25s; z-index: 60;
+    }
+    .toast.show{ opacity: 1; transform: translate(-50%,0); }
   </style>
 </head>
+
 <body>
-  <!-- Capa de color del header -->
-  <div class="header-paint"></div>
-
-  <!-- App -->
-  <div id="root" class="relative z-10"></div>
-
-  <!-- Toast -->
+  <div id="root"></div>
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
-
-  <!-- JS de la página -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
-
