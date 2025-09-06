@@ -172,6 +172,7 @@ function App(){
     <Header count={count}/>
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
+      {/* ============ PACKS ============ */}
       <Block title="Elige tu waffle">
         <div className="grid md:grid-cols-2 gap-3">
           {PACKS.map(p=>(
@@ -187,7 +188,7 @@ function App(){
               <div className="flex items-start justify-between">
                 {/* Izquierda: nombre + desc + link */}
                 <div>
-                  <h4 className="font-semibold">{p.name}</h4>
+                  <h4 className={p.id===packId ? "font-bold" : "font-medium"}>{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
 
                   <button
@@ -214,6 +215,7 @@ function App(){
         {!pack && <div className="mt-2 text-xs text-slate-600">Selecciona un waffle para desbloquear los siguientes pasos.</div>}
       </Block>
 
+      {/* ============ MASA ============ */}
       <Block title="Tipo de masa">
         <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
           {MASAS.map(m => {
@@ -229,7 +231,7 @@ function App(){
                 title={locked ? "Debes seleccionar un waffle para continuar" : ""}
               >
                 <div className="flex items-center justify-between">
-                  <span>{m.name}</span>
+                  <span className={active ? "font-semibold" : ""}>{m.name}</span>
                   {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
                 </div>
               </button>
@@ -238,6 +240,7 @@ function App(){
         </div>
       </Block>
 
+      {/* ============ TOPPINGS ============ */}
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{
@@ -255,7 +258,7 @@ function App(){
                 title={locked?"Debes seleccionar un waffle para continuar":""}
               >
                 <div className="flex items-center justify-between">
-                  <span>{t.name}</span>
+                  <span className={active ? "font-semibold" : ""}>{t.name}</span>
                   {active && <span className="text-xs text-[#3a1104]">✓</span>}
                 </div>
               </button>
@@ -264,6 +267,7 @@ function App(){
         </div>
       </Block>
 
+      {/* ============ SIROPES ============ */}
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {SIROPES.map(s=>{
@@ -281,7 +285,9 @@ function App(){
                 title={locked?"Debes seleccionar un waffle para continuar":""}
               >
                 <div className="flex items-center justify-between">
-                  <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>
+                  <span className={active ? "font-semibold" : ""}>
+                    {s.name}{s.extra?` (+${soles(s.extra)})`:""}
+                  </span>
                   {active && <span className="text-xs text-[#3a1104]">✓</span>}
                 </div>
               </button>
@@ -291,6 +297,7 @@ function App(){
         <p className="text-xs text-slate-600 mt-2">* Hersheys agrega S/ 2.00 al total aunque esté dentro del pack.</p>
       </Block>
 
+      {/* ============ PREMIUM ============ */}
       <Block title="Toppings Premium (opcional)">
         <div className={"grid md:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {PREMIUM.map(p=>(
@@ -308,6 +315,7 @@ function App(){
         </div>
       </Block>
 
+      {/* ============ RESUMEN ============ */}
       <Block title="Dedicatoria y destinatario">
         <div className="grid sm:grid-cols-2 gap-3">
           <div><label className="text-sm font-medium">Para (nombre)</label>
@@ -350,3 +358,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
