@@ -152,6 +152,9 @@ function App(){
     toast("Agregado al carrito");
   }
 
+  // ===== Clases para "seleccionado": borde marrón intenso + fondo suave tintado
+  const ACTIVE_BOX = "border-2 border-[#3a1104] bg-[rgba(58,17,4,0.08)]";
+
   return (<div>
     <Header count={count}/>
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -164,9 +167,7 @@ function App(){
               onClick={()=>setPack(p.id)}
               className={
                 "text-left rounded-2xl border p-4 w-full " +
-                (p.id===packId
-                  ? "border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]"
-                  : "border-slate-200 bg-white/80 hover:bg-white")
+                (p.id===packId ? ACTIVE_BOX : "border-slate-200 bg-white/80 hover:bg-white")
               }
             >
               <div className="flex items-start justify-between">
@@ -182,7 +183,7 @@ function App(){
                     title="Foto referencial"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 0-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
                     </svg>
                     <span>Foto referencial</span>
                   </button>
@@ -209,9 +210,7 @@ function App(){
                 onClick={()=> setMasaId(m.id)}
                 className={
                   "text-left rounded-xl border px-3 py-2 " +
-                  (active
-                    ? "border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]"
-                    : "border-slate-200 bg-white")
+                  (active ? ACTIVE_BOX : "border-slate-200 bg-white")
                 }
                 title={locked ? "Debes seleccionar un waffle para continuar" : ""}
               >
@@ -228,11 +227,11 @@ function App(){
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
-            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?ACTIVE_BOX:"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
                 <span>{t.name}</span>
-                {active && <span className="text-xs text-[#4e3427]">✓</span>}
+                {active && <span className="text-xs text-[#3a1104]">✓</span>}
               </div>
             </button>;
           })}
@@ -242,11 +241,11 @@ function App(){
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=(pack?.incSir||0));
-            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?ACTIVE_BOX:"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
                 <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>
-                {active && <span className="text-xs text-[#4e3427]">✓</span>}
+                {active && <span className="text-xs text-[#3a1104]">✓</span>}
               </div>
             </button>;
           })}
@@ -294,7 +293,14 @@ function App(){
           <button className="px-3 py-2 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
           <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
           <button className="px-3 py-2 rounded-full border" onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
-          <button onClick={add} disabled={!pack} className={"btn-pill text-white "+(!pack?"btn-disabled bg-amber-400":"bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800")}>
+          <button
+            onClick={add}
+            disabled={!pack}
+            className={
+              "btn-pill text-white " +
+              (!pack ? "btn-disabled bg-amber-400" : "bg-[#3a1104] hover:bg-[#2a0c02]")
+            }
+          >
             Agregar al carrito
           </button>
         </div>
