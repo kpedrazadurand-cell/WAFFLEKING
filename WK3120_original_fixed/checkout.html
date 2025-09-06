@@ -5,27 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Waffle King — Datos de entrega y pago</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
+
+  <!-- libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
-    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-    .glass{background:rgba(255,255,255,.65);backdrop-filter:blur(10px)}
+    /* ====== Paleta (coincide con index) ====== */
+    :root{
+      --wk-brown-deep:#3a1104;   /* encabezado */
+      --wk-gold:#c28432;         /* dorado mostaza */
+      --wk-cream:#fff0d6;        /* crema suave (si la necesitas) */
+    }
+
+    body{
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
+      background: var(--wk-gold);   /* fondo mostaza en toda la página */
+      min-height:100vh;
+    }
+
+    /* Header oscuro: sustituimos el "glass" por fondo sólido */
+    header.glass{
+      background: var(--wk-brown-deep) !important;
+      color:#fff !important;
+      backdrop-filter:none !important;
+      border-bottom: 0 !important;
+    }
+    header.glass h1,
+    header.glass p{
+      color:#fff !important;
+    }
+
+    /* Botón "Seguir comprando" en header oscuro */
+    header.glass .btn-pill{
+      border:2px solid var(--wk-gold);
+      color:#fff;
+      background:transparent;
+    }
+    header.glass .btn-pill:hover{
+      background: rgba(255,255,255,.08);
+    }
+
+    /* Tarjetas y sombras se mantienen */
     .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
-    .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
+
+    /* Toast conserva el look ámbar */
+    .toast{
+      position:fixed;bottom:16px;left:50%;
+      transform:translate(-50%,16px);
+      background:#b45309;color:#fff;
+      padding:10px 14px;border-radius:12px;
+      opacity:0;transition:all .25s;z-index:60
+    }
     .toast.show{opacity:1;transform:translate(-50%,0)}
   </style>
 </head>
-<body class="bg-[radial-gradient(ellipse_at_top,rgba(255,236,200,.55),transparent_60%),radial-gradient(ellipse_at_bottom,rgba(254,243,199,.5),transparent_60%)] min-h-screen">
+
+<body>
   <div id="root"></div>
   <div id="toast" class="toast">Completa los datos / agrega productos</div>
+
+  <!-- Tu app -->
   <script type="text/babel" src="js/checkout.js"></script>
 </body>
 </html>
-
 
 
 
