@@ -55,7 +55,7 @@ function Header({count}){
         </div>
         <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
-          {count>0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
+          {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
       </div>
       <div className="mt-2 w-full">
@@ -165,7 +165,7 @@ function App(){
               className={
                 "text-left rounded-2xl border p-4 w-full " +
                 (p.id===packId
-                  ? "border-[#c28432] bg-[#fff0d6] border-2 text-[#6c1e00]"
+                  ? "border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]"
                   : "border-slate-200 bg-white/80 hover:bg-white")
               }
             >
@@ -182,7 +182,7 @@ function App(){
                     title="Foto referencial"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 0-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
                     </svg>
                     <span>Foto referencial</span>
                   </button>
@@ -210,7 +210,7 @@ function App(){
                 className={
                   "text-left rounded-xl border px-3 py-2 " +
                   (active
-                    ? "border-[#c28432] bg-[#fff0d6] text-[#6c1e00] border-2"
+                    ? "border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]"
                     : "border-slate-200 bg-white")
                 }
                 title={locked ? "Debes seleccionar un waffle para continuar" : ""}
@@ -228,11 +228,11 @@ function App(){
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
-            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-[#c28432] bg-[#fff0d6] border-2":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
                 <span>{t.name}</span>
-                {active && <span className="text-xs text-[#6c1e00]">✓</span>}
+                {active && <span className="text-xs text-[#4e3427]">✓</span>}
               </div>
             </button>;
           })}
@@ -242,11 +242,11 @@ function App(){
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=(pack?.incSir||0));
-            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-[#c28432] bg-[#fff0d6] border-2":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-2 border-[#4e3427] bg-[rgba(78,52,39,0.08)]":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
                 <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>
-                {active && <span className="text-xs text-[#6c1e00]">✓</span>}
+                {active && <span className="text-xs text-[#4e3427]">✓</span>}
               </div>
             </button>;
           })}
@@ -306,5 +306,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
 
