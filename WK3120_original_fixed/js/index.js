@@ -3,7 +3,7 @@ const {useState,useMemo,useEffect}=React;
 
 const LOGO="assets/logo.png";
 
-/* ============ Packs (ahora con imagen referencial) ============ */
+/* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
   { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria", img:"assets/ref-special.jpg" },
   { id:"king",    name:"Waffle King (2 pisos)",    price:45, incTop:4, incSir:3, desc:"Incluye 4 toppings + 3 siropes + dedicatoria", img:"assets/ref-king.jpg" },
@@ -106,7 +106,7 @@ function App(){
   const [qty,setQty]=useState(1);
   const locked=!pack;
 
-  // NUEVO: estado para el preview de imagen
+  // preview de imagen
   const [preview,setPreview]=useState(null); // {src,title} | null
 
   useEffect(()=>{
@@ -159,24 +159,37 @@ function App(){
             <button key={p.id} onClick={()=>setPack(p.id)}
               className={"text-left rounded-2xl border p-4 w-full "+(p.id===packId?"border-amber-300 bg-white":"border-slate-200 bg-white/80 hover:bg-white")}>
               <div className="flex items-start justify-between">
+                {/* Izquierda: nombre + desc + link móvil */}
                 <div>
                   <h4 className="font-semibold">{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
+                  {/* Link pequeño SOLO en móvil */}
+                  <button
+                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
+                    className="sm:hidden mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600"
+                    aria-label={`Ver imagen referencial de ${p.name}`}
+                    title="Foto referencial"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                    </svg>
+                    <span>Foto referencial</span>
+                  </button>
                 </div>
 
-                {/* Precio + botón ver imagen referencial */}
+                {/* Derecha: precio + botón pequeño SOLO en desktop */}
                 <div className="flex items-center gap-2">
                   <div className="font-bold">{soles(p.price)}</div>
                   <button
-                    title="Ver imagen referencial"
-                    aria-label={`Ver imagen referencial de ${p.name}`}
                     onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50 whitespace-nowrap"
+                    className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50"
+                    aria-label={`Ver imagen referencial de ${p.name}`}
+                    title="Foto referencial"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
                       <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
                     </svg>
-                    <span>Ver imagen referencial</span>
+                    <span>Foto referencial</span>
                   </button>
                 </div>
               </div>
