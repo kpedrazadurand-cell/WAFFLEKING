@@ -164,23 +164,23 @@ function App(){
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
                 </div>
                 {/* Precio + botón ver foto (no rompe layout) */}
-                <div className="flex items-center gap-2">
-                  <button
-                    title="Ver foto"
-                    aria-label={`Ver foto de ${p.name}`}
-                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className="rounded-full border border-amber-300 p-1.5 hover:bg-amber-50"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
-                    </svg>
-                  </button>
-                  <div className="font-bold">{soles(p.price)}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+               <div className="flex items-center gap-2">
+  <div className="font-bold">{soles(p.price)}</div>
+
+  <button
+    title="Ver imagen referencial"
+    aria-label={`Ver imagen referencial de ${p.name}`}
+    onClick={(e)=>{ e.stopPropagation(); setPreview({src:p.img, title:p.name}); }}
+    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50 whitespace-nowrap"
+  >
+    {/* icono */}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+    </svg>
+    <span>Ver imagen referencial</span>
+  </button>
+</div>
+
         {!pack && <div className="mt-2 text-xs text-slate-600">Selecciona un waffle para desbloquear los siguientes pasos.</div>}
       </Block>
 
