@@ -1,9 +1,12 @@
+/* global React, ReactDOM */
 const {useState,useMemo,useEffect}=React;
+
 const LOGO="assets/logo.png";
 
+/* ============ Packs (ahora con imagen referencial) ============ */
 const PACKS = [
-  { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria" },
-  { id:"king",    name:"Waffle King (2 pisos)",    price:45, incTop:4, incSir:3, desc:"Incluye 4 toppings + 3 siropes + dedicatoria" },
+  { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria", img:"assets/ref-special.jpg" },
+  { id:"king",    name:"Waffle King (2 pisos)",    price:45, incTop:4, incSir:3, desc:"Incluye 4 toppings + 3 siropes + dedicatoria", img:"assets/ref-king.jpg" },
 ];
 
 const MASAS = [
@@ -28,7 +31,6 @@ const SIROPES=[
  {id:"s-fudge",name:"Fudge",extra:0},
  {id:"s-hers",name:"Hersheys",extra:2},
 ];
-
 const PREMIUM=[
  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
  {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
@@ -38,27 +40,16 @@ const PREMIUM=[
 ];
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
-function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
+function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
-function useCartCount(){
-  const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
-  useEffect(()=>{
-    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
-    window.addEventListener("storage",on);
-    return()=>window.removeEventListener("storage",on)
-  },[]);
-  return[c,setC]
-}
+function useCartCount(){const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));useEffect(()=>{const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));window.addEventListener("storage",on);return()=>window.removeEventListener("storage",on)},[]);return[c,setC]}
 
 function Header({count}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
         <img src={LOGO} className="h-10 w-10 rounded-xl ring-1 ring-amber-200 object-contain"/>
-        <div className="leading-4">
-          <h1 className="font-extrabold text-lg">Waffle King</h1>
-          <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
-        </div>
+        <div className="leading-4"><h1 className="font-extrabold text-lg">Waffle King</h1><p className="text-xs text-slate-700">Pedidos online — Lima Norte</p></div>
         <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
           {count>0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
@@ -84,12 +75,27 @@ function Block({title,children,extra}){
   </div>;
 }
 
+/* ===== Modal de imagen referencial ===== */
+function ImagePreview({src,title,onClose}){
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
+        <div className="px-5 py-3 border-b flex items-center justify-between">
+          <div className="font-semibold">{title}</div>
+          <button className="btn-pill border" onClick={onClose}>Cerrar</button>
+        </div>
+        <img src={src} alt={title} className="w-full h-auto object-cover"
+             onError={(e)=>{e.target.style.display='none'; toast('No se encontró la imagen');}}/>
+      </div>
+    </div>
+  );
+}
+
 function App(){
   useEffect(()=>{try{if(localStorage.getItem('wk_clear_delivery')==='1'){localStorage.removeItem('wk_delivery');localStorage.removeItem('wk_clear_delivery');}}catch(e){}},[]);
 
   const [packId,setPack]=useState(null);
   const pack=useMemo(()=>PACKS.find(p=>p.id===packId),[packId]);
-
   const [tops,setTops]=useState([]);
   const [masaId, setMasaId] = useState(null);
   const [sirs,setSirs]=useState([]);
@@ -98,12 +104,13 @@ function App(){
   const [rec,setRec]=useState("");
   const [count,setCount]=useCartCount();
   const [qty,setQty]=useState(1);
-
   const locked=!pack;
 
+  // NUEVO: estado para el preview de imagen
+  const [preview,setPreview]=useState(null); // {src,title} | null
+
   useEffect(()=>{
-    setTops([]); setSirs([]); setQty(1);
-    setMasaId(null);
+    setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
     setNotes(""); setRec("");
   },[packId]);
@@ -111,7 +118,6 @@ function App(){
   const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
   const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
   const masaDelta = masaId ? (MASAS.find(m => m.id === masaId)?.delta || 0) : 0;
-
   const unit = locked ? 0 : ((pack?.price || 0) + masaDelta + sirsExtra + premCost);
   const total=locked?0:(unit*qty);
 
@@ -127,38 +133,18 @@ function App(){
     if(requirePack())return;
     if (!masaId) {toast("Selecciona el tipo de masa"); return;}
     if(qty<1){toast("Cantidad inválida");return;}
-
-    const item={
-      name:pack.name,
-      packId:pack.id,
-      basePrice:pack.price,
-      incTop:pack.incTop,
-      incSir:pack.incSir,
-      masaId,
-      masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica"),
-      masaDelta,
+    const item={name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica (harina de trigo)"),masaDelta,
       toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
       premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
-      recipient:rec,
-      notes:notes,
-      unitPrice:unit,
-      qty:qty
-    };
-
+      recipient:rec, notes:notes,
+      unitPrice:unit,qty:qty};
     const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
     cart.push(item);
     localStorage.setItem("wk_cart",JSON.stringify(cart));
-
-    setPack(null);
-    setTops([]);
-    setSirs([]);
-    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
-    setQty(1);
-    setNotes("");
-    setRec("");
-    setMasaId(null); // limpiar masa tras agregar
-
+    setPack(null); setTops([]); setSirs([]);
+    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
+    setNotes(""); setRec("");
     setCount(cart.reduce((a,b)=>a+b.qty,0));
     toast("Agregado al carrito");
   }
@@ -177,7 +163,20 @@ function App(){
                   <h4 className="font-semibold">{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
                 </div>
-                <div className="font-bold">{soles(p.price)}</div>
+                {/* Precio + botón ver foto (no rompe layout) */}
+                <div className="flex items-center gap-2">
+                  <button
+                    title="Ver foto"
+                    aria-label={`Ver foto de ${p.name}`}
+                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
+                    className="rounded-full border border-amber-300 p-1.5 hover:bg-amber-50"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                    </svg>
+                  </button>
+                  <div className="font-bold">{soles(p.price)}</div>
+                </div>
               </div>
             </button>
           ))}
@@ -276,7 +275,10 @@ function App(){
         </div>
       </div>
     </main>
+
+    {/* Modal ver foto */}
+    {preview && <ImagePreview src={preview.src} title={preview.title} onClose={()=>setPreview(null)}/>}
   </div>);
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
