@@ -2,8 +2,8 @@
 const {useState,useMemo,useEffect}=React;
 
 const LOGO="assets/logo.png";
-const WELCOME_VIDEO="assets/welcome.mp4";           // ← tu video
-const WELCOME_POSTER="assets/welcome-poster.jpg";   // ← opcional
+const WELCOME_VIDEO="assets/welcome.mp4";
+const WELCOME_POSTER="assets/welcome-poster.jpg";
 
 /* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
@@ -55,7 +55,7 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (compacto + fixes) ================= */
+/* ================= Modal de Bienvenida (responsive fix) ================= */
 function WelcomeModal({open,onClose,onStart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -84,13 +84,14 @@ function WelcomeModal({open,onClose,onStart}){
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar (fuera del contenido) */}
+        {/* Cerrar:
+            - móvil: dentro (top-2 right-2)
+            - desktop: fuera (md:-top-3 md:-right-3) */}
         <button
           aria-label="Cerrar"
           onClick={()=>closeWithAnim(onClose)}
-          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10"
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
           style={{
-            top:'-14px', right:'-14px',             // ← esquina exterior
             border:'2px solid #c28432',
             color:'#3a1104', background:'#fff',
             boxShadow:'0 6px 16px rgba(58,17,4,.22)'
@@ -98,9 +99,9 @@ function WelcomeModal({open,onClose,onStart}){
         >×</button>
 
         <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
-          {/* IZQ: personaje, un poco más a la derecha */}
+          {/* IZQ: personaje (centrado en móvil) */}
           <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 ml-3 md:ml-5 bg-white"
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
             style={{
               borderColor:'#c28432',
               width:'200px', height:'240px',
@@ -284,7 +285,7 @@ function App(){
       onClose={()=>setWelcomeOpen(false)}
       onStart={()=>{
         setWelcomeOpen(false);
-        setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10); // ← ir arriba
+        setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10);
       }}
     />
 
