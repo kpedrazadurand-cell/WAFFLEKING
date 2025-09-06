@@ -13,7 +13,7 @@ const PACKS = [
 
 const MASAS = [
   { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness", name:"Premium (avena)",           delta:5 },
+  { id:"fitness", name:"Fitness (avena)",           delta:5 },
 ];
 
 const TOPS = [
@@ -55,15 +55,18 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (video izq + mensaje/CTA der) ================= */
+/* ================= Modal de Bienvenida (pro, con animación y mejor framing) ================= */
 function WelcomeModal({open,onClose,onStart}){
-  // cierre con ESC
+  // animación de entrada/salida
+  const [visible,setVisible]=useState(false);
   useEffect(()=>{
-    if(!open) return;
-    function onKey(e){ if(e.key==='Escape'){ onClose?.(); } }
-    window.addEventListener('keydown',onKey);
-    return ()=>window.removeEventListener('keydown',onKey);
-  },[open,onClose]);
+    if(open){ setTimeout(()=>setVisible(true),0); }
+  },[open]);
+
+  function closeWithAnim(cb){
+    setVisible(false);
+    setTimeout(()=>cb && cb(), 200); // match con transition .2s
+  }
 
   if(!open) return null;
 
@@ -71,18 +74,39 @@ function WelcomeModal({open,onClose,onStart}){
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog" aria-modal="true" aria-labelledby="wk-welcome-title"
-      onClick={(e)=>{ if(e.target===e.currentTarget) onClose?.(); }}
-      style={{background:'rgba(0,0,0,.4)'}}
+      onClick={(e)=>{ if(e.target===e.currentTarget) closeWithAnim(onClose); }}
+      style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="bg-white rounded-2xl border-2 shadow-xl w-[min(92vw,680px)]"
-        style={{borderColor:'#c28432'}}
+        className="relative bg-white rounded-2xl border-2 w-[min(92vw,680px)]"
+        style={{
+          borderColor:'#c28432',
+          boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+          transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+          opacity: visible ? 1 : 0,
+          transition:'transform .2s ease, opacity .2s ease'
+        }}
       >
+        {/* Botón cerrar */}
+        <button
+          aria-label="Cerrar"
+          onClick={()=>closeWithAnim(onClose)}
+          className="absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center"
+          style={{
+            border:'2px solid #c28432',
+            color:'#3a1104',
+            background:'#fff',
+            boxShadow:'0 2px 8px rgba(58,17,4,.12)'
+          }}
+        >
+          ×
+        </button>
+
         <div className="grid md:grid-cols-[300px,1fr] gap-6 p-5 md:p-6 items-center">
-          {/* VIDEO IZQUIERDA (alto > ancho) */}
+          {/* VIDEO IZQUIERDA (alto > ancho, sin recorte) */}
           <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[240px] md:w-[300px] shadow-sm"
-            style={{borderColor:'#c28432', aspectRatio:'9 / 16', background:'#fff'}}
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[240px] md:w-[300px] bg-white"
+            style={{borderColor:'#c28432', aspectRatio:'9 / 16', boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}
           >
             <video
               src={WELCOME_VIDEO}
@@ -91,12 +115,12 @@ function WelcomeModal({open,onClose,onStart}){
               muted
               loop
               playsInline
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain bg-white"   // ← object-contain para que se vea completo
             />
           </div>
 
-          {/* TEXTO + CTA DERECHA */}
-          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4">
+          {/* TEXTO + CTA DERECHA con divisor sutil */}
+          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4 md:pl-6 md:border-l md:border-amber-100">
             <h2 id="wk-welcome-title" className="font-bold text-2xl md:text-3xl text-[#b32b11] leading-tight text-center md:text-left">
               ¡Gracias por unirte a la familia Waffle King!
             </h2>
@@ -104,9 +128,9 @@ function WelcomeModal({open,onClose,onStart}){
               Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
             </p>
             <button
-              onClick={onStart}
+              onClick={()=>closeWithAnim(onStart)}
               className="mt-1 inline-flex items-center justify-center rounded-full px-5 h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
-              style={{background:'#3a1104'}}
+              style={{background:'#3a1104', boxShadow:'0 6px 16px rgba(58,17,4,.2)'}}
               onMouseDown={(e)=>e.currentTarget.style.background='#2a0c02'}
               onMouseUp={(e)=>e.currentTarget.style.background='#3a1104'}
               onMouseLeave={(e)=>e.currentTarget.style.background='#3a1104'}
@@ -457,3 +481,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
