@@ -12,30 +12,26 @@
 
   <style>
     :root{
-      --wk-brown: #6c1e00;   /* marrón intenso */
+      --wk-brown:   #6c1e00; /* marrón intenso */
       --wk-mustard: #c28432; /* mostaza */
-      --wk-cream: #fff0d6;   /* crema suave (para detalles si deseas) */
+      --wk-gold:    #fff0d6; /* crema/dorado suave */
     }
 
-    /* Tipografía y helpers que ya usabas */
+    /* Fuente y utilidades existentes */
     body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto}
-    .glass{background:rgba(255,255,255,.65);backdrop-filter:blur(10px)}
     .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
-
-    /* Toast tal cual */
     .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
     .toast.show{opacity:1;transform:translate(-50%,0)}
 
-    /* ======= NUEVO: pintado del header en marrón con difuminado ======= */
+    /* Header pintado en marrón con difuminado hacia abajo */
     .header-paint{
       position:fixed;
-      inset:0 0 auto 0;   /* top:0, left:0, right:0 */
-      height:140px;       /* alto suficiente para cubrir el header y su sombra */
+      inset:0 0 auto 0;
+      height:140px;
       pointer-events:none;
       z-index:0;
-      /* Marrón que se disuelve hacia abajo (transparente) */
       background: linear-gradient(
         to bottom,
         rgba(108, 30, 0, 0.95) 0%,
@@ -45,24 +41,37 @@
       );
     }
 
-    /* ======= NUEVO: fondo mostaza para todo el resto ======= */
+    /* Fondo general mostaza */
     body{
       background: var(--wk-mustard);
       min-height: 100vh;
     }
+
+    /* El header llevaba .glass con fondo blanco: lo hacemos transparente */
+    header.glass{ background: transparent !important; backdrop-filter: blur(10px); }
+
+    /* Texto del header en dorado */
+    header.glass .leading-4 h1{ color: var(--wk-gold) !important; }
+    header.glass .leading-4 p { color: var(--wk-gold) !important; opacity:.95; }
+
+    /* También el ícono del carrito (usa currentColor) */
+    header.glass button{ color: var(--wk-gold); }
+    header.glass button svg{ color: inherit; }
+
+    /* Opcional: el pill “24h” mantiene su estilo original */
   </style>
 </head>
 <body>
-  <!-- Capa de color para el header (difuminado marrón) -->
+  <!-- Capa de color del header -->
   <div class="header-paint"></div>
 
-  <!-- Tu app -->
+  <!-- App -->
   <div id="root" class="relative z-10"></div>
 
   <!-- Toast -->
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
 
-  <!-- Tu JS (sin cambios) -->
+  <!-- JS de la página -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
