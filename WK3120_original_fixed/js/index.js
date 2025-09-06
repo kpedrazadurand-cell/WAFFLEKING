@@ -55,7 +55,7 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (compacto) ================= */
+/* ================= Modal de Bienvenida (compacto + fixes) ================= */
 function WelcomeModal({open,onClose,onStart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -77,28 +77,33 @@ function WelcomeModal({open,onClose,onStart}){
         className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-hidden"
         style={{
           borderColor:'#c28432',
-          width:'min(92vw, 560px)',              // ↓ ventana más pequeña
+          width:'min(92vw, 560px)',
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar */}
+        {/* Cerrar (fuera del contenido) */}
         <button
           aria-label="Cerrar"
           onClick={()=>closeWithAnim(onClose)}
-          className="absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center"
-          style={{border:'2px solid #c28432', color:'#3a1104', background:'#fff', boxShadow:'0 2px 8px rgba(58,17,4,.12)'}}
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10"
+          style={{
+            top:'-14px', right:'-14px',             // ← esquina exterior
+            border:'2px solid #c28432',
+            color:'#3a1104', background:'#fff',
+            boxShadow:'0 6px 16px rgba(58,17,4,.22)'
+          }}
         >×</button>
 
-        <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 items-center">
-          {/* IZQ: personaje más pequeño (alto controlado) */}
+        <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
+          {/* IZQ: personaje, un poco más a la derecha */}
           <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 bg-white"
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 ml-3 md:ml-5 bg-white"
             style={{
               borderColor:'#c28432',
-              width:'200px', height:'240px',        // ← tamaño compacto
+              width:'200px', height:'240px',
               boxShadow:'0 8px 16px rgba(58,17,4,.06)'
             }}
           >
@@ -110,7 +115,7 @@ function WelcomeModal({open,onClose,onStart}){
             />
           </div>
 
-          {/* DER: Texto + CTA (compacto) */}
+          {/* DER: Texto + CTA */}
           <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-3.5 md:pl-5 md:border-l md:border-amber-200">
             <h2
               id="wk-welcome-title"
@@ -226,11 +231,6 @@ function App(){
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
-  function goToPacks(){
-    const el = document.getElementById('packs-start');
-    if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
-  }
-
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
@@ -282,7 +282,10 @@ function App(){
     <WelcomeModal
       open={welcomeOpen}
       onClose={()=>setWelcomeOpen(false)}
-      onStart={()=>{ setWelcomeOpen(false); goToPacks(); }}
+      onStart={()=>{
+        setWelcomeOpen(false);
+        setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10); // ← ir arriba
+      }}
     />
 
     <Header count={count}/>
@@ -471,4 +474,3 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
