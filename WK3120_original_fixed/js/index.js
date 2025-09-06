@@ -55,7 +55,7 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (ajustado y estilizado) ================= */
+/* ================= Modal de Bienvenida (compacto) ================= */
 function WelcomeModal({open,onClose,onStart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -74,10 +74,10 @@ function WelcomeModal({open,onClose,onStart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2"
+        className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-hidden"
         style={{
           borderColor:'#c28432',
-          width:'min(92vw, 640px)',        // ← tamaño de ventana (como tu captura)
+          width:'min(92vw, 560px)',              // ↓ ventana más pequeña
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
@@ -92,11 +92,15 @@ function WelcomeModal({open,onClose,onStart}){
           style={{border:'2px solid #c28432', color:'#3a1104', background:'#fff', boxShadow:'0 2px 8px rgba(58,17,4,.12)'}}
         >×</button>
 
-        <div className="grid md:grid-cols-[280px,1fr] gap-6 p-5 md:p-6 items-center">
-          {/* IZQ: Video alto, sin recorte */}
+        <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 items-center">
+          {/* IZQ: personaje más pequeño (alto controlado) */}
           <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[220px] md:w-[280px] bg-white"
-            style={{borderColor:'#c28432', aspectRatio:'9 / 16', boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 bg-white"
+            style={{
+              borderColor:'#c28432',
+              width:'200px', height:'240px',        // ← tamaño compacto
+              boxShadow:'0 8px 16px rgba(58,17,4,.06)'
+            }}
           >
             <video
               src={WELCOME_VIDEO}
@@ -106,32 +110,30 @@ function WelcomeModal({open,onClose,onStart}){
             />
           </div>
 
-          {/* DER: Texto + CTA, con divisor y tipografía mejorada */}
-          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4 md:pl-6 md:border-l md:border-amber-200">
+          {/* DER: Texto + CTA (compacto) */}
+          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-3.5 md:pl-5 md:border-l md:border-amber-200">
             <h2
               id="wk-welcome-title"
-              className="font-extrabold text-3xl leading-tight tracking-tight text-center md:text-left"
+              className="font-extrabold text-2xl md:text-[28px] leading-tight tracking-tight text-center md:text-left"
               style={{
                 backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',
                 WebkitBackgroundClip:'text',
                 backgroundClip:'text',
-                color:'transparent',
-                textShadow:'0 1px 0 rgba(0,0,0,.04)'
+                color:'transparent'
               }}
             >
               ¡Gracias por unirte a la familia Waffle King!
             </h2>
 
-            {/* subrayado/acento */}
-            <div className="h-[3px] w-16 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <div className="h-[3px] w-14 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
 
-            <p className="text-sm md:text-base text-[#4e3427] leading-relaxed text-center md:text-left">
+            <p className="text-sm md:text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
               Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
             </p>
 
             <button
               onClick={()=>closeWithAnim(onStart)}
-              className="mt-1 inline-flex items-center justify-center rounded-full px-6 h-12 w-full md:w-[260px] font-bold text-white transition active:scale-[0.98]"
+              className="mt-0.5 inline-flex items-center justify-center rounded-full px-5 h-11 md:h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
               style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
             >
               Empezar pedido
@@ -215,10 +217,9 @@ function App(){
   const [qty,setQty]=useState(1);
   const locked=!pack;
 
-  // preview de imagen
   const [preview,setPreview]=useState(null);
 
-  // Welcome: una sola vez por sesión
+  // Welcome una vez por sesión
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
