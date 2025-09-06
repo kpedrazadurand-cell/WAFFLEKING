@@ -2,7 +2,7 @@
 const {useState,useMemo,useEffect}=React;
 
 const LOGO="assets/logo.png";
-const WELCOME_VIDEO="assets/welcome.mp4";           // ← tu video aquí
+const WELCOME_VIDEO="assets/welcome.mp4";           // ← tu video
 const WELCOME_POSTER="assets/welcome-poster.jpg";   // ← opcional
 
 /* ============ Packs (con imagen referencial) ============ */
@@ -55,19 +55,15 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (pro, con animación y mejor framing) ================= */
+/* ================= Modal de Bienvenida (ajustado y estilizado) ================= */
 function WelcomeModal({open,onClose,onStart}){
-  // animación de entrada/salida
   const [visible,setVisible]=useState(false);
-  useEffect(()=>{
-    if(open){ setTimeout(()=>setVisible(true),0); }
-  },[open]);
+  useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
 
   function closeWithAnim(cb){
     setVisible(false);
-    setTimeout(()=>cb && cb(), 200); // match con transition .2s
+    setTimeout(()=>cb && cb(), 200);
   }
-
   if(!open) return null;
 
   return (
@@ -78,62 +74,65 @@ function WelcomeModal({open,onClose,onStart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2 w-[min(92vw,680px)]"
+        className="relative bg-white rounded-2xl border-2"
         style={{
           borderColor:'#c28432',
+          width:'min(92vw, 640px)',        // ← tamaño de ventana (como tu captura)
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Botón cerrar */}
+        {/* Cerrar */}
         <button
           aria-label="Cerrar"
           onClick={()=>closeWithAnim(onClose)}
           className="absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center"
-          style={{
-            border:'2px solid #c28432',
-            color:'#3a1104',
-            background:'#fff',
-            boxShadow:'0 2px 8px rgba(58,17,4,.12)'
-          }}
-        >
-          ×
-        </button>
+          style={{border:'2px solid #c28432', color:'#3a1104', background:'#fff', boxShadow:'0 2px 8px rgba(58,17,4,.12)'}}
+        >×</button>
 
-        <div className="grid md:grid-cols-[300px,1fr] gap-6 p-5 md:p-6 items-center">
-          {/* VIDEO IZQUIERDA (alto > ancho, sin recorte) */}
+        <div className="grid md:grid-cols-[280px,1fr] gap-6 p-5 md:p-6 items-center">
+          {/* IZQ: Video alto, sin recorte */}
           <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[240px] md:w-[300px] bg-white"
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 w-[220px] md:w-[280px] bg-white"
             style={{borderColor:'#c28432', aspectRatio:'9 / 16', boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}
           >
             <video
               src={WELCOME_VIDEO}
               poster={WELCOME_POSTER}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-contain bg-white"   // ← object-contain para que se vea completo
+              autoPlay muted loop playsInline
+              className="w-full h-full object-contain bg-white"
             />
           </div>
 
-          {/* TEXTO + CTA DERECHA con divisor sutil */}
-          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4 md:pl-6 md:border-l md:border-amber-100">
-            <h2 id="wk-welcome-title" className="font-bold text-2xl md:text-3xl text-[#b32b11] leading-tight text-center md:text-left">
+          {/* DER: Texto + CTA, con divisor y tipografía mejorada */}
+          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-4 md:pl-6 md:border-l md:border-amber-200">
+            <h2
+              id="wk-welcome-title"
+              className="font-extrabold text-3xl leading-tight tracking-tight text-center md:text-left"
+              style={{
+                backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',
+                WebkitBackgroundClip:'text',
+                backgroundClip:'text',
+                color:'transparent',
+                textShadow:'0 1px 0 rgba(0,0,0,.04)'
+              }}
+            >
               ¡Gracias por unirte a la familia Waffle King!
             </h2>
-            <p className="text-slate-800 text-sm md:text-base text-center md:text-left">
+
+            {/* subrayado/acento */}
+            <div className="h-[3px] w-16 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+
+            <p className="text-sm md:text-base text-[#4e3427] leading-relaxed text-center md:text-left">
               Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
             </p>
+
             <button
               onClick={()=>closeWithAnim(onStart)}
-              className="mt-1 inline-flex items-center justify-center rounded-full px-5 h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
-              style={{background:'#3a1104', boxShadow:'0 6px 16px rgba(58,17,4,.2)'}}
-              onMouseDown={(e)=>e.currentTarget.style.background='#2a0c02'}
-              onMouseUp={(e)=>e.currentTarget.style.background='#3a1104'}
-              onMouseLeave={(e)=>e.currentTarget.style.background='#3a1104'}
+              className="mt-1 inline-flex items-center justify-center rounded-full px-6 h-12 w-full md:w-[260px] font-bold text-white transition active:scale-[0.98]"
+              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
             >
               Empezar pedido
             </button>
@@ -217,19 +216,15 @@ function App(){
   const locked=!pack;
 
   // preview de imagen
-  const [preview,setPreview]=useState(null); // {src,title} | null
+  const [preview,setPreview]=useState(null);
 
-  // ====== Welcome modal: mostrar solo 1 vez por sesión ======
+  // Welcome: una sola vez por sesión
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
-    if(!seen){
-      setWelcomeOpen(true);
-      sessionStorage.setItem('wk_welcome_seen','1');
-    }
+    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
-  // Scroll a "Elige tu waffle"
   function goToPacks(){
     const el = document.getElementById('packs-start');
     if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
@@ -249,7 +244,6 @@ function App(){
 
   function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
 
-  // ===== Estilo activo dorado + sin outline negro
   const ACTIVE_BOX =
     "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
   const FOCUS_OFF = "focus:outline-none focus:ring-0";
@@ -295,7 +289,6 @@ function App(){
 
       {/* ============ PACKS ============ */}
       <Block title="Elige tu waffle">
-        {/* ancla para scroll */}
         <div id="packs-start" />
         <div className="grid md:grid-cols-2 gap-3">
           {PACKS.map(p=>(
@@ -309,11 +302,9 @@ function App(){
               aria-label={`Elegir ${p.name}`}
             >
               <div className="flex items-start justify-between">
-                {/* Izquierda: nombre + desc + link */}
                 <div>
                   <h4 className={p.id===packId ? "font-bold" : "font-medium"}>{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
-
                   <button
                     onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
                     className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 " + FOCUS_OFF}
@@ -326,8 +317,6 @@ function App(){
                     <span>Foto referencial</span>
                   </button>
                 </div>
-
-                {/* Derecha: precio compacto */}
                 <div className="flex items-center">
                   <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
                 </div>
