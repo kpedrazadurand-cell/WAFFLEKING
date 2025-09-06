@@ -1,6 +1,3 @@
-<!-- Asume que Tailwind ya está cargado en tu página -->
-<div id="root"></div>
-<script type="text/javascript">
 /* global React, ReactDOM */
 const {useState,useMemo,useEffect}=React;
 
@@ -18,34 +15,43 @@ const MASAS = [
 ];
 
 const TOPS = [
-  { id:"t-fresa",     name:"Fresa" },
-  { id:"t-platano",   name:"Plátano" },
-  { id:"t-oreo",      name:"Oreo" },
-  { id:"t-sublime",   name:"Sublime" },
-  { id:"t-princesa",  name:"Princesa" },
-  { id:"t-cua",       name:"Cua Cua" },
-  { id:"t-obsesion",  name:"Obsesión" },
+  { id:"t-fresa", name:"Fresa" },
+  { id:"t-platano", name:"Plátano" },
+  { id:"t-oreo", name:"Oreo" },
+  { id:"t-sublime", name:"Sublime" },
+  { id:"t-princesa", name:"Princesa" },
+  { id:"t-cua", name:"Cua Cua" },
+  { id:"t-obsesion", name:"Obsesión" },
 ];
 
 const SIROPES=[
- {id:"s-maple",name:"Miel de maple",extra:0},
- {id:"s-fresa",name:"Jarabe de fresa",extra:0},
- {id:"s-dulce",name:"Dulce de leche",extra:0},
- {id:"s-fudge",name:"Fudge",extra:0},
- {id:"s-hers",name:"Hersheys",extra:2},
+  {id:"s-maple",name:"Miel de maple",extra:0},
+  {id:"s-fresa",name:"Jarabe de fresa",extra:0},
+  {id:"s-dulce",name:"Dulce de leche",extra:0},
+  {id:"s-fudge",name:"Fudge",extra:0},
+  {id:"s-hers",name:"Hersheys",extra:2},
 ];
+
 const PREMIUM=[
- {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
- {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
- {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
- {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
- {id:"p-ferrero",name:"Ferrero Rocher",price:5},
+  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
+  {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
+  {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
+  {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
+  {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
-function useCartCount(){const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));useEffect(()=>{const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));window.addEventListener("storage",on);return()=>window.removeEventListener("storage",on)},[]);return[c,setC]}
+function useCartCount(){
+  const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+  useEffect(()=>{
+    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+    window.addEventListener("storage",on);
+    return()=>window.removeEventListener("storage",on)
+  },[]);
+  return[c,setC]
+}
 
 function Header({count}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
@@ -56,11 +62,7 @@ function Header({count}){
           <h1 className="font-extrabold text-lg">Waffle King</h1>
           <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
         </div>
-        <button
-          onClick={()=>location.href='checkout.html'}
-          className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300/60"
-          aria-label="Ir al carrito"
-        >
+        <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
           {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
@@ -133,10 +135,10 @@ function App(){
 
   function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
 
-  // ===== Estilos activos unificados (dorado) y foco consistente
+  // ===== Estilo activo dorado + sin outline negro
   const ACTIVE_BOX =
-    "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.12)),#ffffff]";
-  const FOCUS_RING = "focus:outline-none focus:ring-2 focus:ring-amber-300/60";
+    "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
+  const FOCUS_OFF = "focus:outline-none focus:ring-0";
 
   function toggle(list,setter,limit,id){
     if(requirePack())return;
@@ -148,12 +150,14 @@ function App(){
     if(requirePack())return;
     if (!masaId) {toast("Selecciona el tipo de masa"); return;}
     if(qty<1){toast("Cantidad inválida");return;}
-    const item={name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica (harina de trigo)"),masaDelta,
+    const item={
+      name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,
+      masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica (harina de trigo)"),masaDelta,
       toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
       premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
-      recipient:rec, notes:notes,
-      unitPrice:unit,qty:qty};
+      recipient:rec, notes:notes, unitPrice:unit,qty:qty
+    };
     const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
     cart.push(item);
     localStorage.setItem("wk_cart",JSON.stringify(cart));
@@ -175,10 +179,10 @@ function App(){
               key={p.id}
               onClick={()=>setPack(p.id)}
               className={
-                "text-left rounded-2xl border p-4 w-full " + FOCUS_RING + " " +
+                "text-left rounded-2xl border p-4 w-full " + FOCUS_OFF + " " +
                 (p.id===packId ? ACTIVE_BOX : "border-slate-200 bg-white/80 hover:bg-white")
               }
-              title="Elegir pack"
+              aria-label={`Elegir ${p.name}`}
             >
               <div className="flex items-start justify-between">
                 {/* Izquierda: nombre + desc + link */}
@@ -188,12 +192,12 @@ function App(){
 
                   <button
                     onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className="mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 focus:outline-none"
+                    className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 " + FOCUS_OFF}
                     aria-label={`Ver imagen referencial de ${p.name}`}
                     title="Foto referencial"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a 2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
                     </svg>
                     <span>Foto referencial</span>
                   </button>
@@ -219,10 +223,10 @@ function App(){
                 key={m.id}
                 onClick={()=> setMasaId(m.id)}
                 className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_RING + " " +
+                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
                   (active ? ACTIVE_BOX : "border-slate-200 bg-white")
                 }
-                title={locked ? "Debes seleccionar un waffle para continuar" : "Elegir masa"}
+                title={locked ? "Debes seleccionar un waffle para continuar" : ""}
               >
                 <div className="flex items-center justify-between">
                   <span>{m.name}</span>
@@ -244,11 +248,11 @@ function App(){
                 key={t.id}
                 onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)}
                 className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_RING + " " +
+                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
                   (active?ACTIVE_BOX:"border-slate-200 bg-white") +
                   (dis?" opacity-50 cursor-not-allowed":"")
                 }
-                title={locked?"Debes seleccionar un waffle para continuar":"Seleccionar topping"}
+                title={locked?"Debes seleccionar un waffle para continuar":""}
               >
                 <div className="flex items-center justify-between">
                   <span>{t.name}</span>
@@ -270,11 +274,11 @@ function App(){
                 key={s.id}
                 onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)}
                 className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_RING + " " +
+                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
                   (active?ACTIVE_BOX:"border-slate-200 bg-white") +
                   (dis?" opacity-50 cursor-not-allowed":"")
                 }
-                title={locked?"Debes seleccionar un waffle para continuar":"Seleccionar sirope"}
+                title={locked?"Debes seleccionar un waffle para continuar":""}
               >
                 <div className="flex items-center justify-between">
                   <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>
@@ -292,14 +296,11 @@ function App(){
           {PREMIUM.map(p=>(
             <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2" title={locked?"Debes seleccionar un waffle para continuar":""}>
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-slate-600">+ {soles(p.price)} c/u</div>
-                </div>
+                <div><div className="font-medium">{p.name}</div><div className="text-xs text-slate-600">+ {soles(p.price)} c/u</div></div>
                 <div className="flex items-center gap-2">
-                  <button className={"px-2 py-1 rounded-full border " + FOCUS_RING} onClick={()=>setPremium(p.id,-1)}>−</button>
+                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,-1)}>−</button>
                   <span className="w-8 text-center">{locked?0:(prem[p.id]||0)}</span>
-                  <button className={"px-2 py-1 rounded-full border " + FOCUS_RING} onClick={()=>setPremium(p.id,1)}>+</button>
+                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,1)}>+</button>
                 </div>
               </div>
             </div>
@@ -309,15 +310,11 @@ function App(){
 
       <Block title="Dedicatoria y destinatario">
         <div className="grid sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium">Para (nombre)</label>
-            <input value={rec} onChange={e=>setRec(e.target.value.slice(0,60))} className="mt-1 w-full rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-amber-300/60" placeholder="Ej: Mackey"/>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium">Mensaje/Dedicatoria (opcional)</label>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-1 w-full rounded-lg border border-slate-300 p-3 focus:outline-none focus:ring-2 focus:ring-amber-300/60" rows="3" placeholder="Ej: Para Mackey con mucho amor. ¡Feliz cumple!"></textarea>
-            <div className="text-xs text-slate-500 mt-1">{notes.length}/180</div>
-          </div>
+          <div><label className="text-sm font-medium">Para (nombre)</label>
+            <input value={rec} onChange={e=>setRec(e.target.value.slice(0,60))} className="mt-1 w-full rounded-lg border border-slate-300 p-2 focus:outline-none" placeholder="Ej: Mackey"/></div>
+          <div className="sm:col-span-2"><label className="text-sm font-medium">Mensaje/Dedicatoria (opcional)</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-1 w-full rounded-lg border border-slate-300 p-3 focus:outline-none" rows="3" placeholder="Ej: Para Mackey con mucho amor. ¡Feliz cumple!"></textarea>
+            <div className="text-xs text-slate-500 mt-1">{notes.length}/180</div></div>
         </div>
       </Block>
 
@@ -331,14 +328,14 @@ function App(){
           <div className="text-xs text-slate-600">Base del pack + sirope(s) con extra + premium seleccionados.</div>
         </div>
         <div className="flex items-center gap-2">
-          <button className={"px-3 py-2 rounded-full border "+FOCUS_RING} onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
+          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
           <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
-          <button className={"px-3 py-2 rounded-full border "+FOCUS_RING} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
+          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
           <button
             onClick={add}
             disabled={!pack}
             className={
-              "btn-pill text-white focus:outline-none focus:ring-2 focus:ring-amber-300/60 " +
+              "btn-pill text-white " + FOCUS_OFF + " " +
               (!pack ? "btn-disabled bg-amber-400" : "bg-[#3a1104] hover:bg-[#2a0c02]")
             }
           >
@@ -353,10 +350,3 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-
-<!-- Toast mínimo opcional -->
-<style>
-#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1f2937;color:#fff;border-radius:999px;padding:.5rem .9rem;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .15s ease}
-#toast.show{opacity:1}
-</style>
