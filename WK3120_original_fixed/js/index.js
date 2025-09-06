@@ -152,8 +152,8 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // ===== Selección: fondo blanco + borde 2px NEGRO
-  const ACTIVE_BOX = "border-2 border-black bg-white";
+  // Selección con el MISMO borde que los contenedores: 1px slate-200 y fondo blanco
+  const ACTIVE_BOX = "border border-slate-200 bg-white";
 
   return (<div>
     <Header count={count}/>
@@ -171,7 +171,6 @@ function App(){
               }
             >
               <div className="flex items-start justify-between">
-                {/* Izquierda: nombre + desc + link */}
                 <div>
                   <h4 className="font-semibold">{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
@@ -189,7 +188,6 @@ function App(){
                   </button>
                 </div>
 
-                {/* Derecha: precio compacto */}
                 <div className="flex items-center">
                   <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
                 </div>
