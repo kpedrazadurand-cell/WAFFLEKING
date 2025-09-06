@@ -159,14 +159,14 @@ function App(){
             <button key={p.id} onClick={()=>setPack(p.id)}
               className={"text-left rounded-2xl border p-4 w-full "+(p.id===packId?"border-amber-300 bg-white":"border-slate-200 bg-white/80 hover:bg-white")}>
               <div className="flex items-start justify-between">
-                {/* Izquierda: nombre + desc + link móvil */}
+                {/* Izquierda: nombre + desc + link (igual en PC y móvil) */}
                 <div>
                   <h4 className="font-semibold">{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
-                  {/* Link pequeño SOLO en móvil */}
+
                   <button
                     onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className="sm:hidden mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600"
                     aria-label={`Ver imagen referencial de ${p.name}`}
                     title="Foto referencial"
                   >
@@ -177,20 +177,9 @@ function App(){
                   </button>
                 </div>
 
-                {/* Derecha: precio + botón pequeño SOLO en desktop */}
-                <div className="flex items-center gap-2">
-                  <div className="font-bold">{soles(p.price)}</div>
-                  <button
-                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50"
-                    aria-label={`Ver imagen referencial de ${p.name}`}
-                    title="Foto referencial"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
-                    </svg>
-                    <span>Foto referencial</span>
-                  </button>
+                {/* Derecha: SOLO precio, sin romper línea */}
+                <div className="flex items-center">
+                  <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
                 </div>
               </div>
             </button>
@@ -296,4 +285,5 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
