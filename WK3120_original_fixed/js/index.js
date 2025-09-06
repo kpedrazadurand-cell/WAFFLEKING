@@ -152,8 +152,10 @@ function App(){
     toast("Agregado al carrito");
   }
 
-  // ===== Clases para "seleccionado": borde marrón intenso + fondo suave tintado
-  const ACTIVE_BOX = "border-2 border-[#3a1104] bg-[rgba(58,17,4,0.08)]";
+  // ===== Selección: borde marrón intenso + fondo "difuminado" (gradiente muy suave)
+  // Usa el mismo color del head (#3a1104) pero con opacidad baja para no opacar el texto.
+  const ACTIVE_BOX =
+    "border-2 border-[#3a1104] bg-[linear-gradient(180deg,rgba(58,17,4,0.06),rgba(58,17,4,0.1)),#ffffff]";
 
   return (<div>
     <Header count={count}/>
@@ -312,4 +314,5 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
