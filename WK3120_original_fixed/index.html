@@ -6,71 +6,53 @@
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
-  <!-- Tailwind + React (sin cambios) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* ================== Base ================== */
-    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-
-    .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
-    .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
-    .btn-disabled{opacity:.5;cursor:not-allowed}
-    .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
-    .toast.show{opacity:1;transform:translate(-50%,0)}
-
-    /* ============== Tu paleta (colores planos) ============== */
-    :root{
-      --wk-cream:  #fff0d6;  /* fondo general */
-      --wk-gold:   #c28432;  /* header, acentos */
-      --wk-brown:  #4e3427;  /* texto/acento oscuro */
-      --wk-maroon: #6c1e00;  /* texto acento */
-      --wk-red:    #b32b11;  /* acento fuerte */
-
-      /* variantes suaves para bordes y fondos ligeros */
-      --wk-gold-50:  #fff5e6;
-      --wk-gold-200: #e9c084;
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
     }
-
-    /* Fondo de toda la página (incluye laterales) */
-    body{ background: var(--wk-cream); min-height: 100vh; }
-
-    /* Header pegajoso (antes .glass) ahora dorado sólido */
-    .glass{
-      background: var(--wk-gold);
-      /* para conservar el look del pill y bordes */
-      backdrop-filter: none;
+    .glass {
+      background: rgba(255, 255, 255, .65);
+      backdrop-filter: blur(10px);
     }
-
-    /* Ajustes suaves a clases amber de Tailwind para que usen tu paleta */
-    .border-amber-300{ border-color: var(--wk-gold-200) !important; }
-    .border-amber-200{ border-color: var(--wk-gold-200) !important; }
-    .ring-amber-200{ --tw-ring-color: var(--wk-gold-200) !important; }
-    .bg-amber-50{ background-color: var(--wk-gold-50) !important; }
-    .text-amber-900{ color: var(--wk-maroon) !important; }
-
-    /* Botón principal: mantenemos el gradiente original (no solicitado cambiar) */
-    .from-amber-600{
-      --tw-gradient-from: var(--wk-gold) !important;
-      --tw-gradient-to: rgb(0 0 0 / 0) !important;
-      --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+    .shadow-soft {
+      box-shadow: 0 12px 32px rgba(31, 41, 55, .08);
     }
-    .to-amber-700{ --tw-gradient-to: var(--wk-maroon) !important; }
-    .hover\:from-amber-700:hover{ --tw-gradient-from: var(--wk-maroon) !important; }
-    .hover\:to-amber-800:hover{ --tw-gradient-to: var(--wk-brown) !important; }
+    .btn-pill {
+      border-radius: 9999px;
+      padding: .6rem 1.1rem;
+      font-weight: 600;
+    }
+    .btn-disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translate(-50%, 16px);
+      background: #b45309;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      opacity: 0;
+      transition: all .25s;
+      z-index: 60;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
   </style>
 </head>
-
-<body class="min-h-screen">
+<body class="bg-[radial-gradient(ellipse_at_top,rgba(255,236,200,.55),transparent_60%),radial-gradient(ellipse_at_bottom,rgba(254,243,199,.5),transparent_60%)] min-h-screen">
   <div id="root"></div>
-
-  <!-- toast original -->
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
-
-  <!-- Tu app (sin cambios de lógica/estructura) -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
