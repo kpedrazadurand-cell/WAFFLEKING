@@ -172,8 +172,7 @@ function Header({count}){
         </div>
         <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
-          {/* Badge del carrito: mismo color que títulos (#b32b11), texto blanco y negrita */}
-          {count>0 && <span className="absolute -top-1 -right-1 bg-[#b32b11] text-white font-bold text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
+          {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
       </div>
       <div className="mt-2 w-full">
@@ -493,3 +492,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
