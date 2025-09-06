@@ -49,14 +49,17 @@ function Header({count}){
     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
         <img src={LOGO} className="h-10 w-10 rounded-xl ring-1 ring-amber-200 object-contain"/>
-        <div className="leading-4"><h1 className="font-extrabold text-lg">Waffle King</h1><p className="text-xs text-slate-700">Pedidos online — Lima Norte</p></div>
+        <div className="leading-4">
+          <h1 className="font-extrabold text-lg">Waffle King</h1>
+          <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
+        </div>
         <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
           {count>0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
       </div>
       <div className="mt-2 w-full">
-        <div className="rounded-full border border-amber-300 bg-amber-50 text-amber-900 text-sm px-4 py-2">
+        <div className="rounded-full border-2 border-[#c28432] bg-white text-black text-sm px-4 py-2">
           Pedidos con <b>24h</b> de anticipación.
         </div>
       </div>
@@ -156,10 +159,18 @@ function App(){
       <Block title="Elige tu waffle">
         <div className="grid md:grid-cols-2 gap-3">
           {PACKS.map(p=>(
-            <button key={p.id} onClick={()=>setPack(p.id)}
-              className={"text-left rounded-2xl border p-4 w-full "+(p.id===packId?"border-amber-300 bg-white":"border-slate-200 bg-white/80 hover:bg-white")}>
+            <button
+              key={p.id}
+              onClick={()=>setPack(p.id)}
+              className={
+                "text-left rounded-2xl border p-4 w-full " +
+                (p.id===packId
+                  ? "border-[#c28432] bg-[#fff0d6] border-2 text-[#6c1e00]"
+                  : "border-slate-200 bg-white/80 hover:bg-white")
+              }
+            >
               <div className="flex items-start justify-between">
-                {/* Izquierda: nombre + desc + link (igual en PC y móvil) */}
+                {/* Izquierda: nombre + desc + link */}
                 <div>
                   <h4 className="font-semibold">{p.name}</h4>
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
@@ -177,7 +188,7 @@ function App(){
                   </button>
                 </div>
 
-                {/* Derecha: SOLO precio, sin romper línea */}
+                {/* Derecha: precio compacto */}
                 <div className="flex items-center">
                   <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
                 </div>
@@ -198,7 +209,9 @@ function App(){
                 onClick={()=> setMasaId(m.id)}
                 className={
                   "text-left rounded-xl border px-3 py-2 " +
-                  (active ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white")
+                  (active
+                    ? "border-[#c28432] bg-[#fff0d6] text-[#6c1e00] border-2"
+                    : "border-slate-200 bg-white")
                 }
                 title={locked ? "Debes seleccionar un waffle para continuar" : ""}
               >
@@ -215,9 +228,13 @@ function App(){
       <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {TOPS.map(t=>{const active=tops.includes(t.id);const dis=!active && (tops.length>=(pack?.incTop||0));
-            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={t.id} onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-[#c28432] bg-[#fff0d6] border-2":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
-              <div className="flex items-center justify-between"><span>{t.name}</span>{active&&<span className="text-xs text-amber-700">✓</span>}</div></button>;
+              <div className="flex items-center justify-between">
+                <span>{t.name}</span>
+                {active && <span className="text-xs text-[#6c1e00]">✓</span>}
+              </div>
+            </button>;
           })}
         </div>
       </Block>
@@ -225,9 +242,13 @@ function App(){
       <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
         <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
           {SIROPES.map(s=>{const active=sirs.includes(s.id);const dis=!active && (sirs.length>=(pack?.incSir||0));
-            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
+            return <button key={s.id} onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)} className={"text-left rounded-xl border px-3 py-2 "+(active?"border-[#c28432] bg-[#fff0d6] border-2":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}
               title={locked?"Debes seleccionar un waffle para continuar":""}>
-              <div className="flex items-center justify-between"><span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-amber-700">✓</span>}</div></button>;
+              <div className="flex items-center justify-between">
+                <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>
+                {active && <span className="text-xs text-[#6c1e00]">✓</span>}
+              </div>
+            </button>;
           })}
         </div>
         <p className="text-xs text-slate-600 mt-2">* Hersheys agrega S/ 2.00 al total aunque esté dentro del pack.</p>
