@@ -6,6 +6,7 @@
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
+  <!-- Tailwind + React (sin cambios) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -15,58 +16,46 @@
     /* ================== Base ================== */
     body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
 
-    .glass{background:rgba(255,255,255,.65);backdrop-filter:blur(10px)}
     .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
     .toast{position:fixed;bottom:16px;left:50%;transform:translate(-50%,16px);background:#b45309;color:#fff;padding:10px 14px;border-radius:12px;opacity:0;transition:all .25s;z-index:60}
     .toast.show{opacity:1;transform:translate(-50%,0)}
 
-    /* ============== Tu paleta aplicada ============== */
+    /* ============== Tu paleta (colores planos) ============== */
     :root{
-      --wk-cream:  #fff0d6;  /* crema */
-      --wk-gold:   #c28432;  /* dorado */
-      --wk-brown:  #4e3427;  /* marrón */
-      --wk-maroon: #6c1e00;  /* vino */
-      --wk-red:    #b32b11;  /* rojo quemado */
+      --wk-cream:  #fff0d6;  /* fondo general */
+      --wk-gold:   #c28432;  /* header, acentos */
+      --wk-brown:  #4e3427;  /* texto/acento oscuro */
+      --wk-maroon: #6c1e00;  /* texto acento */
+      --wk-red:    #b32b11;  /* acento fuerte */
 
+      /* variantes suaves para bordes y fondos ligeros */
       --wk-gold-50:  #fff5e6;
       --wk-gold-200: #e9c084;
     }
 
-    /* Fondo general más cálido (laterales con halo) */
-    body{
-      background:
-        radial-gradient(1200px 600px at 50% -180px, rgba(194,132,50,.14), transparent 60%),
-        radial-gradient(900px 420px at -200px 70%, rgba(179,43,17,.06), transparent 65%),
-        linear-gradient(180deg, var(--wk-cream) 0%, #ffffff 24%);
-      min-height: 100vh;
-    }
+    /* Fondo de toda la página (incluye laterales) */
+    body{ background: var(--wk-cream); min-height: 100vh; }
 
-    /* Barra superior “24h de anticipación” con tinte crema */
+    /* Header pegajoso (antes .glass) ahora dorado sólido */
     .glass{
-      background: rgba(255,240,214,.72);
-      backdrop-filter: blur(8px);
+      background: var(--wk-gold);
+      /* para conservar el look del pill y bordes */
+      backdrop-filter: none;
     }
 
-    /* Tarjetas con sombra tibia */
-    .shadow-soft{
-      box-shadow:
-        0 8px 24px rgba(78,52,39,.08),
-        0 1px 0 rgba(194,132,50,.06);
-    }
-
-    /* Ajustes suaves a los tonos amber de Tailwind */
+    /* Ajustes suaves a clases amber de Tailwind para que usen tu paleta */
     .border-amber-300{ border-color: var(--wk-gold-200) !important; }
     .border-amber-200{ border-color: var(--wk-gold-200) !important; }
     .ring-amber-200{ --tw-ring-color: var(--wk-gold-200) !important; }
     .bg-amber-50{ background-color: var(--wk-gold-50) !important; }
     .text-amber-900{ color: var(--wk-maroon) !important; }
 
-    /* Botón principal: gradiente dorado → vino (y hover a marrón) */
+    /* Botón principal: mantenemos el gradiente original (no solicitado cambiar) */
     .from-amber-600{
       --tw-gradient-from: var(--wk-gold) !important;
-      --tw-gradient-to: rgb(98 0 0 / 0) !important;
+      --tw-gradient-to: rgb(0 0 0 / 0) !important;
       --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
     }
     .to-amber-700{ --tw-gradient-to: var(--wk-maroon) !important; }
@@ -77,9 +66,11 @@
 
 <body class="min-h-screen">
   <div id="root"></div>
+
+  <!-- toast original -->
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
 
-  <!-- Tu app (sin cambios de lógica) -->
+  <!-- Tu app (sin cambios de lógica/estructura) -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
