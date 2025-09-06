@@ -2,8 +2,8 @@
 const {useState,useMemo,useEffect}=React;
 
 const LOGO="assets/logo.png";
-const WELCOME_VIDEO="assets/welcome.mp4";           // tu video (mp4)
-const WELCOME_POSTER="assets/welcome-poster.jpg";   // opcional
+const WELCOME_VIDEO="assets/welcome.mp4";
+const WELCOME_POSTER="assets/welcome-poster.jpg";
 
 /* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
@@ -55,7 +55,7 @@ function useCartCount(){
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida ================= */
+/* ================= Modal de Bienvenida (responsive fix) ================= */
 function WelcomeModal({open,onClose,onStart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -74,7 +74,7 @@ function WelcomeModal({open,onClose,onStart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"  {/* ← visible para que la X no se “chancée” */}
+        className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
         style={{
           borderColor:'#c28432',
           width:'min(92vw, 560px)',
@@ -84,18 +84,17 @@ function WelcomeModal({open,onClose,onStart}){
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar
+        {/* Cerrar:
             - móvil: dentro (top-2 right-2)
-            - desktop: fuera y flotando (top-0 right-0 + translate) */}
+            - desktop: fuera (md:-top-3 md:-right-3) */}
         <button
           aria-label="Cerrar"
           onClick={()=>closeWithAnim(onClose)}
-          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:top-0 md:right-0 transform md:translate-x-1/3 md:-translate-y-1/3"
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
           style={{
             border:'2px solid #c28432',
-            color:'#3a1104',
-            background:'#fff',
-            boxShadow:'0 8px 18px rgba(58,17,4,.22)'
+            color:'#3a1104', background:'#fff',
+            boxShadow:'0 6px 16px rgba(58,17,4,.22)'
           }}
         >×</button>
 
@@ -247,7 +246,6 @@ function App(){
 
   function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
 
-  // Estilos de selección
   const ACTIVE_BOX =
     "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
   const FOCUS_OFF = "focus:outline-none focus:ring-0";
