@@ -224,16 +224,19 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </p>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full">
+              {/* PRIMARIO: marrón sólido de la marca */}
               <button
                 onClick={onGotoCart}
-                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-bold text-white transition active:scale-[0.98]"
-                style={{background:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
+                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-bold text-white transition active:scale-[0.98] hover:bg-[#2a0c02]"
+                style={{background:'#3a1104', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
               >
                 Ir al carrito
               </button>
+
+              {/* SECUNDARIO: crema de la marca */}
               <button
                 onClick={onClose}
-                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-semibold"
+                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-semibold hover:opacity-90"
                 style={{background:'var(--wk-cream)', border:'2px solid #c28432', color:'#111'}}
               >
                 Seguir comprando
