@@ -1,11 +1,20 @@
 /* global React, ReactDOM */
 const {useState,useMemo,useEffect}=React;
 
+/* ================== Constantes UX ================== */
+const DAY_MS = 24*60*60*1000;       // 24h cooldown
+const SNOOZE_MS = 10*60*1000;       // 10 min snooze tras cerrar
+const ABANDON_MS = 2*60*60*1000;    // 2h sin tocar el carrito => abandono
+
+/* Páginas donde NO se muestran modales */
+const BLOCKED_PAGES = ['checkout', 'pago', 'gracias'];
+
+/* ================== Assets ================== */
 const LOGO="assets/logo.png";
 const WELCOME_VIDEO="assets/welcome.mp4";
 const WELCOME_POSTER="assets/welcome-poster.jpg";
 
-/* === Nuevo: recordatorio de carrito === */
+/* === Recordatorio de carrito === */
 const REMINDER_VIDEO="assets/aviso.mp4";
 const REMINDER_POSTER="assets/aviso-poster.jpg";
 
@@ -46,14 +55,31 @@ const PREMIUM=[
   {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
+/* ================== Utilidades ================== */
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
+function now(){ return Date.now(); }
+function getLS(key, def=null){ try{ const v = localStorage.getItem(key); return v==null?def:v; }catch(e){ return def; } }
+function getLSNum(key, def=0){ const v = +getLS(key, def); return Number.isFinite(v)?v:def; }
+function setLS(key, val){ try{ localStorage.setItem(key, String(val)); }catch(e){} }
+function onBlockedPage(){
+  const p = (location.pathname||'').toLowerCase();
+  return BLOCKED_PAGES.some(seg => p.includes(seg));
+}
+function getCart(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('wk_cart')||'[]');
+    return Array.isArray(raw)?raw:[];
+  }catch(e){ return []; }
+}
+function getCartCount(){ return getCart().reduce((a,b)=>a+(+b.qty||0),0); }
+
+/* ================== Hook contador carrito ================== */
 function useCartCount(){
-  const getCount=()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0);
-  const [c,setC]=useState(getCount);
+  const [c,setC]=useState(getCartCount);
   useEffect(()=>{
-    const on=()=>setC(getCount());
+    const on=()=>setC(getCartCount());
     window.addEventListener("storage",on);
     return()=>window.removeEventListener("storage",on)
   },[]);
@@ -134,9 +160,9 @@ function ReminderModal({open,onClose,cartCount}){
     setVisible(false);
     setTimeout(()=>{
       if(never){
-        try{ localStorage.setItem('wk_reminder_optout','1'); }catch(e){}
+        setLS('wk_reminder_optout','1'); // Opt-out persistente
       }
-      onClose();
+      onClose(); // El padre registra dismiss/timeouts
     },200);
   };
 
@@ -312,7 +338,40 @@ function ImagePreview({src,title,onClose}){
   );
 }
 
+/* ================== Lógica de decisión de modales ================== */
+function shouldShowWelcome({cartCount}){
+  if(onBlockedPage()) return false;
+  if(cartCount>0) return false;
+
+  const seenSession = sessionStorage.getItem('wk_welcome_seen') === '1';
+  if(seenSession) return false;
+
+  // Cooldown 24h para no repetir todos los días si abre múltiples sesiones
+  const lastShown = getLSNum('wk_welcome_last_shown_at', 0);
+  if(now() - lastShown <= DAY_MS) return false;
+
+  return true;
+}
+function shouldShowReminder({cartCount}){
+  if(onBlockedPage()) return false;
+  if(cartCount<=0) return false;
+
+  if(getLS('wk_reminder_optout') === '1') return false;
+
+  const lastShown = getLSNum('wk_reminder_last_shown_at', 0);
+  if(now() - lastShown <= DAY_MS) return false; // cooldown 24h
+
+  const lastDismiss = getLSNum('wk_reminder_last_dismiss_at', 0);
+  if(now() - lastDismiss <= SNOOZE_MS) return false; // snooze 10m
+
+  const cartUpdatedAt = getLSNum('wk_cart_updated_at', 0);
+  const abandoned = (now() - cartUpdatedAt) > ABANDON_MS; // >2h sin tocar
+  return abandoned;
+}
+
+/* ================== App ================== */
 function App(){
+  // Limpieza de delivery si venía marcado
   useEffect(()=>{try{if(localStorage.getItem('wk_clear_delivery')==='1'){localStorage.removeItem('wk_delivery');localStorage.removeItem('wk_clear_delivery');}}catch(e){}},[]);
 
   const [packId,setPack]=useState(null);
@@ -329,37 +388,38 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: mostrar una vez por sesión, pero NO si hay carrito pendiente
+  // Estados de modales
   const [welcomeOpen,setWelcomeOpen]=useState(false);
-  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada), salvo opt-out
   const [reminderOpen,setReminderOpen]=useState(false);
   const [reminderCount,setReminderCount]=useState(0);
 
-  // *** Lógica de apertura (con opt-out persistente) ***
+  // Decisión de modales al cargar
   useEffect(()=>{
     try {
-      const optOut = localStorage.getItem('wk_reminder_optout') === '1';
-      const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      const items = Array.isArray(cart) ? cart.reduce((a,b)=>a+(+b.qty||0),0) : 0;
+      const items = getCartCount();
       setReminderCount(items);
 
-      // Si hay carrito y NO está en opt-out, muestra recordatorio (y NO bienvenida)
-      if(items > 0 && !optOut){
+      if(shouldShowReminder({cartCount: items})){
         setReminderOpen(true);
-        return;
+        setLS('wk_reminder_last_shown_at', now());
+        return; // si hay reminder, no hay bienvenida
+      }
+      if(shouldShowWelcome({cartCount: items})){
+        setWelcomeOpen(true);
+        sessionStorage.setItem('wk_welcome_seen','1');
+        setLS('wk_welcome_last_shown_at', now());
       }
     } catch(e){}
-    // Bienvenida: una vez por sesión, solo si no hubo recordatorio
-    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
-    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
+  // Reset de opciones al cambiar pack
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
     setNotes(""); setRec("");
   },[packId]);
 
+  // Cálculos de precio
   const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
   const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
   const masaDelta = masaId ? (MASAS.find(m => m.id === masaId)?.delta || 0) : 0;
@@ -373,240 +433,3 @@ function App(){
   const FOCUS_OFF = "focus:outline-none focus:ring-0";
 
   function toggle(list,setter,limit,id){
-    if(requirePack())return;
-    setter(prev=> prev.includes(id) ? prev.filter(x=>x!==id) : (prev.length<limit?[...prev,id]:prev));
-  }
-  function setPremium(id,d){ if(requirePack())return; setPrem(prev=>({...prev,[id]:Math.max(0,(+prev[id]||0)+d)})) }
-
-  function add(){
-    if(requirePack())return;
-    if (!masaId) {toast("Selecciona el tipo de masa"); return;}
-    if(qty<1){toast("Cantidad inválida");return;}
-    const item={
-      name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,
-      masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica (harina de trigo)"),masaDelta,
-      toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
-      siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
-      premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
-      recipient:rec, notes:notes, unitPrice:unit,qty:qty
-    };
-    const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
-    cart.push(item);
-    localStorage.setItem("wk_cart",JSON.stringify(cart));
-    setPack(null); setTops([]); setSirs([]);
-    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
-    setNotes(""); setRec("");
-    const newCount = cart.reduce((a,b)=>a+(+b.qty||0),0);
-    setCount(newCount);
-    toast("Agregado al carrito");
-
-    // Mostrar recordatorio en próximos ingresos
-    setReminderCount(newCount);
-
-    // ⬆️ Mover scroll al inicio tras agregar
-    setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 50);
-  }
-
-  return (<div>
-    {/* MODALES */}
-    <WelcomeModal
-      open={welcomeOpen}
-      onClose={()=>setWelcomeOpen(false)}
-      onStart={()=>{ setWelcomeOpen(false); setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10); }}
-    />
-    <ReminderModal
-      open={reminderOpen}
-      onClose={()=>setReminderOpen(false)}
-      cartCount={reminderCount || count}
-    />
-
-    <Header count={count}/>
-    <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
-      {/* ============ PACKS ============ */}
-      <Block title="Elige tu waffle">
-        <div id="packs-start" />
-        <div className="grid md:grid-cols-2 gap-3">
-          {PACKS.map(p=>(
-            <button
-              key={p.id}
-              onClick={()=>setPack(p.id)}
-              className={
-                "text-left rounded-2xl border p-4 w-full "+ FOCUS_OFF +" "+
-                (p.id===packId ? ACTIVE_BOX : "border-slate-200 bg-white/80 hover:bg-white")
-              }
-              aria-label={`Elegir ${p.name}`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className={p.id===packId ? "font-bold" : "font-medium"}>{p.name}</h4>
-                  <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
-                  <button
-                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 "+FOCUS_OFF}
-                    aria-label={`Ver imagen referencial de ${p.name}`}
-                    title="Foto referencial"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
-                    </svg>
-                    <span>Foto referencial</span>
-                  </button>
-                </div>
-                <div className="flex items-center">
-                  <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-        {!pack && <div className="mt-2 text-xs text-slate-600">Selecciona un waffle para desbloquear los siguientes pasos.</div>}
-      </Block>
-
-      {/* ============ MASA ============ */}
-      <Block title="Tipo de masa">
-        <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
-          {MASAS.map(m => {
-            const active = masaId === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={()=> setMasaId(m.id)}
-                className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
-                  (active ? ACTIVE_BOX : "border-slate-200 bg-white")
-                }
-                title={locked ? "Debes seleccionar un waffle para continuar" : ""}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={active ? "font-semibold" : ""}>{m.name}</span>
-                  {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </Block>
-
-      {/* ============ TOPPINGS ============ */}
-      <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
-        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
-          {TOPS.map(t=>{
-            const active=tops.includes(t.id);
-            const dis=!active && (tops.length>=(pack?.incTop||0));
-            return (
-              <button
-                key={t.id}
-                onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)}
-                className={
-                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
-                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
-                  (dis?" opacity-50 cursor-not-allowed":"")
-                }
-                title={locked?"Debes seleccionar un waffle para continuar":""}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={active ? "font-semibold" : ""}>{t.name}</span>
-                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </Block>
-
-      {/* ============ SIROPES ============ */}
-      <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
-        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
-          {SIROPES.map(s=>{
-            const active=sirs.includes(s.id);
-            const dis=!active && (sirs.length>=(pack?.incSir||0));
-            return (
-              <button
-                key={s.id}
-                onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)}
-                className={
-                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
-                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
-                  (dis?" opacity-50 cursor-not-allowed":"")
-                }
-                title={locked?"Debes seleccionar un waffle para continuar":""}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={active ? "font-semibold" : ""}>
-                    {s.name}{s.extra?` (+${soles(s.extra)})`:""}
-                  </span>
-                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-slate-600 mt-2">* Hersheys agrega S/ 2.00 al total aunque esté dentro del pack.</p>
-      </Block>
-
-      {/* ============ PREMIUM ============ */}
-      <Block title="Toppings Premium (opcional)">
-        <div className={"grid md:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
-          {PREMIUM.map(p=>(
-            <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2" title={locked?"Debes seleccionar un waffle para continuar":""}>
-              <div className="flex items-center justify-between">
-                <div><div className="font-medium">{p.name}</div><div className="text-xs text-slate-600">+ {soles(p.price)} c/u</div></div>
-                <div className="flex items-center gap-2">
-                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,-1)}>−</button>
-                  <span className="w-8 text-center">{locked?0:(prem[p.id]||0)}</span>
-                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,1)}>+</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Block>
-
-      {/* ============ DEDICATORIA ============ */}
-      <Block title="Dedicatoria y destinatario">
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><label className="text-sm font-medium">Para (nombre)</label>
-            <input value={rec} onChange={e=>setRec(e.target.value.slice(0,60))} className="mt-1 w-full rounded-lg border border-slate-300 p-2 focus:outline-none" placeholder="Ej: Mackey"/></div>
-          <div className="sm:col-span-2"><label className="text-sm font-medium">Mensaje/Dedicatoria (opcional)</label>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-1 w-full rounded-lg border border-slate-300 p-3 focus:outline-none" rows="3" placeholder="Ej: Para Mackey con mucho amor. ¡Feliz cumple!"></textarea>
-            <div className="text-xs text-slate-500 mt-1">{notes.length}/180</div></div>
-        </div>
-      </Block>
-
-      {/* ============ FOOTER RESUMEN ============ */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="text-sm">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold">Total del waffle</span>
-            <span className="text-lg font-bold">{soles(total)}</span>
-            <span className="text-xs text-slate-600">{!pack?"(selecciona un waffle)":"("+soles(unit)+" c/u)"}</span>
-          </div>
-          <div className="text-xs text-slate-600">Base del pack + sirope(s) con extra + premium seleccionados.</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
-          <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
-          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
-
-          <button
-            onClick={add}
-            disabled={!pack}
-            className={"btn-pill text-white "+FOCUS_OFF+" "+(!pack?"btn-disabled":"hover:bg-[#2a0c02]")}
-            style={
-              !pack
-                ? { background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))', opacity:1, boxShadow:'0 6px 14px rgba(58,17,4,.18)' }
-                : { background:'#3a1104' }
-            }
-          >
-            Agregar al carrito
-          </button>
-        </div>
-      </div>
-    </main>
-
-    {/* Modal ver foto */}
-    {preview && <ImagePreview src={preview.src} title={preview.title} onClose={()=>setPreview(null)}/>}
-  </div>);
-}
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
