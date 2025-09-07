@@ -46,15 +46,11 @@ function HeaderMini({onSeguir}){
             <p className="text-xs text-slate-700">Confirmación y pago</p>
           </div>
           <div className="ml-auto">
-            {/* === Cambiado: fondo crema + texto negro === */}
+            {/* fondo crema + texto negro */}
             <button
               onClick={onSeguir}
               className="btn-pill border"
-              style={{
-                background: 'var(--wk-cream)',
-                borderColor: 'var(--wk-gold)',
-                color: '#111'
-              }}
+              style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
             >
               Seguir comprando
             </button>
@@ -162,7 +158,8 @@ function DatosEntrega({state,setState}){
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        <h3 className="font-semibold mb-2">Datos de entrega</h3>
+        {/* subtítulo rojo vino + bold */}
+        <h3 className="font-bold text-[#b32b11] mb-2">Datos de entrega</h3>
         <div className="space-y-2">
           <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
           <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
@@ -204,8 +201,8 @@ const PACKS=[
 
 /* ====== MASAS (para editor + WhatsApp) ====== */
 const MASAS = [
-  { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness", name:"Fitness (avena)",           delta:5 },
+  { id:"clasica",  name:"Clásica (harina de trigo)", delta:0 },
+  { id:"fitness",  name:"Premium (avena)",            delta:5 }, // ← renombrado
 ];
 
 /* ====== LISTAS (actualizadas) ====== */
@@ -238,12 +235,10 @@ const PREMIUM=[
 function EditModal({item, onClose, onSave}){
   const baseItem = JSON.parse(JSON.stringify(item||{}));
 
-  // packId inicial seguro (si viene "classic", usa la 1ra opción)
   const initialPackId = (PACKS.some(p=>p.id===baseItem.packId) ? baseItem.packId : PACKS[0].id);
   const [packId,setPackId]=useState(initialPackId);
   const pack = PACKS.find(p=>p.id===packId) || PACKS[0];
 
-  // === NUEVO: estado de masa en el editor (usa la del item; si no, "clasica") ===
   const [masaId, setMasaId] = useState(baseItem.masaId || "clasica");
 
   const [qty,setQty]=useState(baseItem.qty||1);
@@ -271,7 +266,6 @@ function EditModal({item, onClose, onSave}){
     const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
     const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
 
-    // === NUEVO: masa seleccionada en el editor ===
     const masaDelta = (MASAS.find(m => m.id === masaId)?.delta || 0);
     const masaName  = (MASAS.find(m => m.id === masaId)?.name  || "Clásica (harina de trigo)");
 
@@ -288,7 +282,6 @@ function EditModal({item, onClose, onSave}){
       toppings: TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
       siropes: sirsObjs,
       premium: premObjs,
-      // === NUEVO: guardar masa editada ===
       masaId, masaName, masaDelta,
       unitPrice: unit,
       recipient, notes
@@ -307,23 +300,25 @@ function EditModal({item, onClose, onSave}){
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* PACKS */}
+          {/* PACKS (activo: borde dorado #c28432 + fondo blanco) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
               <button key={p.id} onClick={()=>{
                   setPackId(p.id);
                   setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
-                  // Resetea masa como en la primera página
                   setMasaId("clasica");
                 }}
-                className={"text-left rounded-xl border p-3 "+(p.id===packId?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")}>
+                className={
+                  "text-left rounded-xl border p-3 " +
+                  (p.id===packId ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
+                }>
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-600">Incluye {p.incTop} toppings + {p.incSir} siropes</div>
               </button>
             ))}
           </div>
 
-          {/* TIPO DE MASA */}
+          {/* TIPO DE MASA (activo igual que arriba) */}
           <div>
             <div className="text-sm font-medium mb-1">Tipo de masa</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -335,7 +330,7 @@ function EditModal({item, onClose, onSave}){
                     onClick={()=> setMasaId(m.id)}
                     className={
                       "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white")
+                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
                     }
                   >
                     <div className="flex items-center justify-between">
@@ -364,9 +359,13 @@ function EditModal({item, onClose, onSave}){
                 const active=tops.includes(t.id); const dis=!active && (tops.length>=limits.incTop);
                 return (
                   <button key={t.id} onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
-                    className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
+                    className={
+                      "text-left rounded-xl border px-3 py-2 " +
+                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
+                      (dis ? " opacity-50 cursor-not-allowed" : "")
+                    }>
                     <div className="flex items-center justify-between">
-                      <span>{t.name}</span>{active&&<span className="text-xs text-amber-700">✓</span>}
+                      <span>{t.name}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
                     </div>
                   </button>
                 );
@@ -382,9 +381,13 @@ function EditModal({item, onClose, onSave}){
                 const active=sirs.includes(s.id); const dis=!active && (sirs.length>=limits.incSir);
                 return (
                   <button key={s.id} onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
-                    className={"text-left rounded-xl border px-3 py-2 "+(active?"border-amber-300 bg-amber-50":"border-slate-200 bg-white")+(dis?" opacity-50 cursor-not-allowed":"")}>
+                    className={
+                      "text-left rounded-xl border px-3 py-2 " +
+                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
+                      (dis ? " opacity-50 cursor-not-allowed" : "")
+                    }>
                     <div className="flex items-center justify-between">
-                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-amber-700">✓</span>}
+                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
                     </div>
                   </button>
                 );
@@ -446,7 +449,8 @@ function CartList({cart, setCart, canCalc}){
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">Resumen de tu compra</h3>
+          {/* subtítulo rojo vino + bold */}
+          <h3 className="font-bold text-[#b32b11]">Resumen de tu compra</h3>
           {cart.length>0 && <button className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
             {openAll?"Ocultar detalle":"Mostrar detalle"}
           </button>}
@@ -469,7 +473,7 @@ function CartList({cart, setCart, canCalc}){
 
               {openAll && (
                 <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
-                  {/* NUEVO: Masa (fila completa) */}
+                  {/* Masa */}
                   <div className="sm:col-span-3">
                     <div className="font-semibold">Masa</div>
                     <div>{
@@ -580,7 +584,8 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
-            <h4 className="font-semibold text-slate-800">Forma de pago</h4>
+            {/* subtítulo rojo vino + bold */}
+            <h4 className="font-bold text-[#b32b11]">Forma de pago</h4>
           </div>
 
           <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
@@ -609,14 +614,11 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
-            /* === Cambiado: "Subir voucher" rojo vino + blanco en negrita === */
+            /* "Subir voucher" rojo vino + blanco en negrita */
             <button
               onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
-              style={{
-                backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)',
-                boxShadow:'0 8px 18px rgba(58,17,4,.22)'
-              }}
+              style={{ backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)' }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
               Subir voucher
@@ -675,7 +677,6 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   cart.forEach((it,i)=>{
     L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
 
-    // Masa antes de toppings (con fallback si es item viejo)
     const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
     if(masa) L.push("   · Masa: " + masa);
 
@@ -692,7 +693,6 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   if(referencia) L.push("Referencia: "+referencia);
   L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
 
-  // ======= DATOS DE PAGO =======
   const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
   L.push("");
   L.push("Datos de pago:");
@@ -764,7 +764,6 @@ function App(){
     fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
   });
 
-  // helpers carrito
   function safeParse(json){ try{ return JSON.parse(json); }catch(_){ return null; } }
   function normalizeCart(x){ return Array.isArray(x)?x:[]; }
   function multiRead(){
@@ -854,7 +853,7 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR (AJUSTADO: SOLO https PARA WHATSAPP) ======
+  // ====== ENVIAR ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
     if(!voucherFile){ toast("Sube el voucher de pago"); return; }
@@ -907,7 +906,24 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  const canSend = !!voucherFile;
+  // ====== RESTRICCIÓN: datos completos + voucher ======
+  const deliveryValid = Boolean(
+    (state.nombre||"").trim() &&
+    (state.telefono||"").trim().length===9 &&
+    (state.distrito||"").trim() &&
+    (state.direccion||"").trim() &&
+    (state.fecha||"").trim() &&
+    (state.hora||"").trim()
+  );
+  const canSend = !!(voucherFile && deliveryValid);
+
+  function handleEnviarClick(){
+    if(!canSend){
+      toast("Completar datos de entrega y subir voucher de pago");
+      return;
+    }
+    enviar();
+  }
 
   return (
     <div>
@@ -922,10 +938,9 @@ function App(){
         voucherPreview={voucherPreview}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* === Cambiado: deshabilitado marrón difuminado; habilitado rojo vino + blanco bold === */}
+        {/* deshabilitado: marrón difuminado; habilitado: rojo vino + blanco bold */}
         <button
-          onClick={enviar}
-          disabled={!canSend}
+          onClick={handleEnviarClick}
           className={
             "w-full btn-pill font-bold text-white " + (
               canSend
