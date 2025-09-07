@@ -143,7 +143,7 @@ function WelcomeModal({open,onClose,onStart}){
   );
 }
 
-/* ============ MODAL: Recordatorio (mismo ancho que bienvenida, compacto) ============ */
+/* ============ MODAL: Recordatorio (mismo ancho que bienvenida, texto izquierda, video derecha) ============ */
 function ReminderModal({open,count,onClose,onGotoCart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -177,32 +177,32 @@ function ReminderModal({open,count,onClose,onGotoCart}){
           style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
-        {/* PC: texto izquierda / video derecha. Móvil: texto → imagen → botones */}
+        {/* PC: grid; Móvil: pila (texto → imagen → botones) */}
         <div className="grid md:grid-cols-[1fr,200px] gap-4 p-5 pt-10 items-center">
-          {/* TEXTO */}
-          <div className="flex flex-col items-center md:items-start">
+          {/* TEXTO (izquierda) */}
+          <div className="flex flex-col items-start">
             <h3 id="wk-reminder-title"
-                className="text-[20px] md:text-[22px] font-extrabold leading-snug text-center md:text-left"
+                className="text-[20px] md:text-[22px] font-extrabold leading-snug text-left"
                 style={{color:'#8e240c'}}>
               Tu pedido se quedó a medio antojo 🍓
             </h3>
             <div className="h-[3px] w-16 rounded-full my-3" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
-            <p className="text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
+            <p className="text-[15px] text-[#4e3427] leading-relaxed text-left">
               Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
 
-            {/* BOTONES desktop */}
-            <div className="mt-4 hidden md:flex items-center gap-3">
+            {/* BOTONES desktop: en columna bajo el texto */}
+            <div className="mt-4 hidden md:flex flex-col gap-2 w-full max-w-[260px]">
               <button
                 onClick={onGotoCart}
-                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[170px]"
+                className="font-bold text-white rounded-full px-5 h-11 w-full"
                 style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
               >
                 Ir al carrito
               </button>
               <button
                 onClick={onClose}
-                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[170px]"
+                className="rounded-full px-5 h-11 font-semibold w-full"
                 style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
               >
                 Seguir comprando
@@ -210,7 +210,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* VIDEO: marco con padding para que el personaje quepa completo */}
+          {/* VIDEO (derecha) */}
           <div className="w-full flex justify-center">
             <div
               className="rounded-[14px] border-2 overflow-hidden bg-white p-2 w-[180px] h-[210px] md:w-[200px] md:h-[230px]"
@@ -233,7 +233,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* BOTONES móvil */}
+          {/* BOTONES móvil: debajo de la imagen */}
           <div className="md:hidden col-span-1 flex flex-col gap-3 mt-2">
             <button
               onClick={onGotoCart}
@@ -308,7 +308,7 @@ function Block({title,children,extra}){
 function ImagePreview({src,title,onClose}){
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
+    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
         <div className="px-5 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">{title}</div>
           <button className="btn-pill border focus:outline-none" onClick={onClose}>Cerrar</button>
@@ -422,8 +422,8 @@ function App(){
       onClose={()=>setReminderOpen(false)}
       onGotoCart={()=>{
         try{
-          sessionStorage.setItem('wk_reminder_seen','1');   // no mostrar de nuevo al volver
-          sessionStorage.setItem('wk_skip_welcome_once','1'); // saltar bienvenida una vez
+          sessionStorage.setItem('wk_reminder_seen','1');       // no mostrar de nuevo al volver
+          sessionStorage.setItem('wk_skip_welcome_once','1');   // saltar bienvenida una vez
         }catch(_){}
         setReminderOpen(false);
         location.href='checkout.html';
@@ -627,5 +627,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
 
