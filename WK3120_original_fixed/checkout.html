@@ -17,6 +17,7 @@
         --wk-brown-deep:#3a1104;   /* header + badge carrito */
         --wk-gold:#c28432;         /* dorado (bordes / acentos) */
         --wk-cream:#fff0d6;        /* crema (fondo) */
+        --wk-line:#ead6b6;         /* borde suave para inputs */
       }
 
       body{
@@ -72,6 +73,80 @@
         opacity:0;transition:all .25s;z-index:60
       }
       .toast.show{opacity:1;transform:translate(-50%,0)}
+
+      /* ==========================================================
+         ============  APARIENCIA DEL FORMULARIO (UI)  ============
+         Sólo estilos. No cambia la lógica.
+         ========================================================== */
+
+      /* Inputs 100% blancos, con borde dorado suave */
+      main input[type="text"],
+      main input[type="tel"],
+      main input[type="email"],
+      main input[type="date"],
+      main input[type="time"],
+      main input[type="number"],
+      main textarea,
+      main select{
+        width:100%;
+        background:#fff !important;
+        border:1.5px solid var(--wk-line);
+        border-radius:12px;
+        color:#111;
+        font-size:16px;
+        padding:12px 14px;
+        height:48px;
+        outline:none;
+        box-shadow:0 1px 0 rgba(0,0,0,.02) inset;
+        -webkit-appearance:none;
+        appearance:none;
+      }
+      main textarea{
+        height:auto;
+        min-height:110px;
+        resize:vertical;
+      }
+      main input:focus,
+      main textarea:focus,
+      main select:focus{
+        border-color:var(--wk-gold);
+        box-shadow:0 0 0 3px rgba(194,132,50,.18);
+      }
+
+      /* Labels más claros y separados */
+      main label{
+        display:block;
+        margin-bottom:6px;
+        font-weight:600;
+        color:#4e3427;
+      }
+
+      /* Select con “flecha” personalizada */
+      main select{
+        padding-right:40px;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c28432' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+        background-repeat:no-repeat;
+        background-position:right 12px center;
+        background-size:12px;
+      }
+
+      /* iOS Safari: evita fondo gris de date/time */
+      input[type="date"]::-webkit-datetime-edit,
+      input[type="time"]::-webkit-datetime-edit{ color:#111; }
+      input[type="date"]::-webkit-calendar-picker-indicator,
+      input[type="time"]::-webkit-calendar-picker-indicator{
+        filter:hue-rotate(0deg) saturate(0) brightness(0.3);
+        opacity:.7;
+      }
+
+      /* --- Layout móvil: apila grids de 2 columnas (Fecha/Hora, etc.) --- */
+      @media (max-width: 640px){
+        /* cualquier grid de 2 cols dentro del main pasa a 1 col */
+        main .grid.grid-cols-2{ grid-template-columns: 1fr !important; gap:12px !important; }
+        /* por si usan gap muy corto */
+        main .gap-2{ gap:12px !important; }
+        main .gap-3{ gap:14px !important; }
+      }
     </style>
   </head>
 
