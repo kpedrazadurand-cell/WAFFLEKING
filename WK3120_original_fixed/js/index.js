@@ -84,7 +84,7 @@ function WelcomeModal({open,onClose,onStart}){
       <div
         className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
         style={{
-          borderColor:'#c28432',
+          borderColor:'var(--wk-gold)',
           width:'min(92vw, 560px)',
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
@@ -97,8 +97,8 @@ function WelcomeModal({open,onClose,onStart}){
           onClick={()=>closeWithAnim(onClose)}
           className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
           style={{
-            border:'2px solid #c28432',
-            color:'#3a1104', background:'#fff',
+            border:'2px solid var(--wk-gold)',
+            color:'var(--wk-brown-deep)', background:'#fff',
             boxShadow:'0 6px 16px rgba(58,17,4,.22)'
           }}
         >×</button>
@@ -106,7 +106,7 @@ function WelcomeModal({open,onClose,onStart}){
         <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
           <div
             className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
-            style={{borderColor:'#c28432',width:'200px',height:'240px',boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}
+            style={{borderColor:'var(--wk-gold)',width:'200px',height:'240px',boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}
           >
             <video
               src={WELCOME_VIDEO}
@@ -125,14 +125,14 @@ function WelcomeModal({open,onClose,onStart}){
                 style={{backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}>
               ¡Gracias por unirte a la familia Waffle King!
             </h2>
-            <div className="h-[3px] w-14 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <div className="h-[3px] w-14 rounded-full" style={{background:'linear-gradient(90deg,var(--wk-gold),var(--wk-title-red))'}}/>
             <p className="text-sm md:text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
               Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
             </p>
             <button
               onClick={()=>closeWithAnim(onStart)}
               className="mt-0.5 inline-flex items-center justify-center rounded-full px-5 h-11 md:h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
-              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
+              style={{background:'linear-gradient(180deg,var(--wk-brown-deep),#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
             >
               Empezar pedido
             </button>
@@ -161,8 +161,8 @@ function ReminderModal({open,count,onClose,onGotoCart}){
       <div
         className="relative bg-white rounded-2xl border-2 overflow-visible"
         style={{
-          borderColor:'#c28432',
-          width:'min(92vw, 560px)', // igual que bienvenida
+          borderColor:'var(--wk-gold)',
+          width:'min(92vw, 560px)',
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
@@ -174,7 +174,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
           aria-label="Cerrar"
           onClick={onClose}
           className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2"
-          style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
+          style={{border:'2px solid var(--wk-gold)',background:'#fff',color:'var(--wk-brown-deep)',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
         {/* PC: grid; Móvil: pila (texto → imagen → botones) */}
@@ -186,7 +186,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
                 style={{color:'#8e240c'}}>
               Tu pedido se quedó a medio antojo 🍓
             </h3>
-            <div className="h-[3px] w-16 rounded-full my-3" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <div className="h-[3px] w-16 rounded-full my-3" style={{background:'linear-gradient(90deg,var(--wk-gold),var(--wk-title-red))'}}/>
             <p className="text-[15px] text-[#4e3427] leading-relaxed text-left">
               Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
@@ -196,14 +196,14 @@ function ReminderModal({open,count,onClose,onGotoCart}){
               <button
                 onClick={onGotoCart}
                 className="font-bold text-white rounded-full px-5 h-11 w-full"
-                style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
+                style={{background:'linear-gradient(180deg,var(--wk-brown-deep),#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
               >
                 Ir al carrito
               </button>
               <button
                 onClick={onClose}
                 className="rounded-full px-5 h-11 font-semibold w-full"
-                style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
+                style={{background:'var(--wk-cream)',border:'2px solid var(--wk-gold)',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
               >
                 Seguir comprando
               </button>
@@ -214,7 +214,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
           <div className="w-full flex justify-center">
             <div
               className="rounded-[14px] border-2 overflow-hidden bg-white p-2 w-[180px] h-[210px] md:w-[200px] md:h-[230px]"
-              style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}
+              style={{borderColor:'var(--wk-gold)',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}
             >
               <video
                 src={REMINDER_VIDEO}
@@ -238,14 +238,14 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             <button
               onClick={onGotoCart}
               className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
-              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
+              style={{background:'linear-gradient(180deg,var(--wk-brown-deep),#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
             >
               Ir al carrito
             </button>
             <button
               onClick={onClose}
               className="w-full rounded-full px-5 h-12 font-semibold"
-              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
+              style={{background:'var(--wk-cream)',border:'2px solid var(--wk-gold)',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
             >
               Seguir comprando
             </button>
@@ -275,11 +275,11 @@ function Header({count}){
         </div>
         <button onClick={goCart} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
-          {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
+          {count>0 && <span className="absolute -top-1 -right-1 bg-[var(--wk-brown-deep)] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
       </div>
       <div className="mt-2 w-full">
-        <div className="rounded-full border-2 border-[#c28432] bg-white text-black text-sm px-4 py-2">
+        <div className="rounded-full border-2 border-[var(--wk-gold)] bg-white text-black text-sm px-4 py-2">
           Pedidos con <b>24h</b> de anticipación.
         </div>
       </div>
@@ -296,7 +296,7 @@ function Block({title,children,extra}){
   return (
     <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-[#b32b11]">{title}</h3>
+        <h3 className="font-bold text-[var(--wk-title-red)]">{title}</h3>
         {extra}
       </div>
       {children}
@@ -308,7 +308,7 @@ function Block({title,children,extra}){
 function ImagePreview({src,title,onClose}){
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3" onClick={onClose}>
-    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
         <div className="px-5 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">{title}</div>
           <button className="btn-pill border focus:outline-none" onClick={onClose}>Cerrar</button>
@@ -382,7 +382,7 @@ function App(){
   function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
 
   const ACTIVE_BOX =
-    "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
+    "border-2 border-[var(--wk-gold)] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
   const FOCUS_OFF = "focus:outline-none focus:ring-0";
 
   function toggle(list,setter,limit,id){
@@ -465,7 +465,7 @@ function App(){
                     title="Foto referencial"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a 2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
                     </svg>
                     <span>Foto referencial</span>
                   </button>
@@ -524,7 +524,7 @@ function App(){
               >
                 <div className="flex items-center justify-between">
                   <span className={active ? "font-semibold" : ""}>{t.name}</span>
-                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
+                  {active && <span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                 </div>
               </button>
             );
@@ -553,7 +553,7 @@ function App(){
                   <span className={active ? "font-semibold" : ""}>
                     {s.name}{s.extra?` (+${soles(s.extra)})`:""}
                   </span>
-                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
+                  {active && <span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                 </div>
               </button>
             );
@@ -613,7 +613,7 @@ function App(){
             style={
               !pack
                 ? { background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))', opacity:1, boxShadow:'0 6px 14px rgba(58,17,4,.18)' }
-                : { background:'#3a1104' }
+                : { background:'var(--wk-brown-deep)' }
             }
           >
             Agregar al carrito
