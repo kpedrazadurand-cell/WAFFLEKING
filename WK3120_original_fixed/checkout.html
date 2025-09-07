@@ -12,17 +12,16 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-      /* ===== Paleta ===== */
+      /* ===== Paleta unificada ===== */
       :root{
         --wk-brown-deep:#3a1104;   /* header + badge carrito */
         --wk-gold:#c28432;         /* dorado (bordes / acentos) */
         --wk-cream:#fff0d6;        /* crema (fondo) */
-        --wk-line:#ead6b6;         /* borde suave */
       }
 
       body{
         font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
-        background: var(--wk-cream);
+        background: var(--wk-cream);   /* fondo crema */
         min-height:100vh;
       }
 
@@ -34,30 +33,84 @@
         border-bottom:0 !important;
       }
       header.glass h1, header.glass p{ color:#fff !important; }
+
+      /* Pill bajo el header */
       header.glass .rounded-full{
         background: var(--wk-cream) !important;
         border: 2px solid var(--wk-gold) !important;
         color:#111 !important;
       }
+
+      /* Carrito y badge */
       header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
       header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
+
+      /* >>> Badge del carrito: MARRÓN y texto blanco */
       header.glass .bg-amber-600{
         background-color: var(--wk-brown-deep) !important;
         color:#fff !important;
         border:1px solid var(--wk-cream);
       }
 
-      /* Cards blancas con borde dorado */
+      /* ===== Cards blancas con borde dorado ===== */
       main .rounded-2xl.bg-white.border,
       section .rounded-2xl.bg-white.border{
         border-color: var(--wk-gold) !important;
         border-width: 2px !important;
       }
 
+      /* ============ LOOK & FEEL DE CAMPOS ============ */
+      /* Fondo blanco en TODOS los controles */
+      input[type="text"],
+      input[type="tel"],
+      input[type="url"],
+      input[type="date"],
+      input[type="time"],
+      input[type="number"],
+      textarea,
+      select{
+        background:#fff !important;
+        border:1px solid #e5e7eb !important;      /* gris suave */
+        border-radius:14px !important;
+        color:#111 !important;
+        min-height:52px !important;
+      }
+      /* Corrección por si algún wrapper trae fondos grises de Tailwind */
+      .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100{ background:#fff !important; }
+
+      /* Foco dorado consistente */
+      input:focus, select:focus, textarea:focus{
+        outline:0 !important;
+        border-color: var(--wk-gold) !important;
+        box-shadow:0 0 0 3px rgba(194,132,50,.18) !important;
+      }
+
+      /* Select de Distrito con caret propio (flecha) */
+      select{
+        appearance:none; -webkit-appearance:none; -moz-appearance:none;
+        padding-right:2.4rem !important;
+        background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="%236c1e00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+        background-repeat:no-repeat;
+        background-position:right .9rem center;
+        background-size:16px 16px;
+      }
+
+      /* ==== Fecha & Hora en móvil: que NO queden amontonadas ==== */
+      @media (max-width: 640px){
+        /* Fuerza que los inputs date/time ocupen toda la fila (si están en grid) */
+        input[type="date"], input[type="time"]{
+          grid-column:1 / -1 !important;
+          width:100% !important;
+        }
+        /* Separación vertical entre ambos */
+        input[type="time"]{ margin-top:12px !important; }
+      }
+
       /* Utilería */
       .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
       .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
       .btn-disabled{opacity:.5;cursor:not-allowed}
+
       .toast{
         position:fixed;bottom:16px;left:50%;
         transform:translate(-50%,16px);
@@ -66,71 +119,6 @@
         opacity:0;transition:all .25s;z-index:60
       }
       .toast.show{opacity:1;transform:translate(-50%,0)}
-
-      /* ==========================================================
-         ============  APARIENCIA DEL FORMULARIO (UI)  ============
-         Solo estilos. No cambia la lógica JS.
-         ========================================================== */
-
-      /* Inputs / selects / textarea: fondo BLANCO, borde suave dorado */
-      #root main input,
-      #root main select,
-      #root main textarea{
-        background:#fff !important;
-        border:1.5px solid var(--wk-line) !important;
-        border-radius:12px !important;
-        color:#111 !important;
-        padding:12px 14px !important;
-        height:48px !important;
-        outline:none !important;
-        box-shadow:0 1px 0 rgba(0,0,0,.02) inset !important;
-      }
-      #root main textarea{ height:auto !important; min-height:110px !important; resize:vertical !important; }
-      #root main input:focus,
-      #root main select:focus,
-      #root main textarea:focus{
-        border-color:var(--wk-gold) !important;
-        box-shadow:0 0 0 3px rgba(194,132,50,.18) !important;
-      }
-
-      /* Labels más claros y separados */
-      #root main label{
-        display:block !important;
-        margin-bottom:6px !important;
-        font-weight:600 !important;
-        color:#4e3427 !important;
-      }
-
-      /* Select: flechita dorada */
-      #root main select{
-        -webkit-appearance:none !important;
-        appearance:none !important;
-        padding-right:40px !important;
-        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c28432' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") !important;
-        background-repeat:no-repeat !important;
-        background-position:right 12px center !important;
-        background-size:12px !important;
-      }
-
-      /* iOS Safari: evita gris en date/time */
-      input[type="date"]::-webkit-datetime-edit,
-      input[type="time"]::-webkit-datetime-edit{ color:#111; }
-      input[type="date"]::-webkit-calendar-picker-indicator,
-      input[type="time"]::-webkit-calendar-picker-indicator{
-        filter:hue-rotate(0deg) saturate(0) brightness(0.3);
-        opacity:.75;
-      }
-
-      /* Espaciado base para grids */
-      #root main .grid{ row-gap:14px; column-gap:14px; }
-
-      /* MÓVIL: apilar cualquier grid de 2 columnas (ej: Distrito / Fecha / Hora) */
-      @media (max-width: 640px){
-        #root main .grid.grid-cols-2,
-        #root main .sm\:grid-cols-2{           /* por si la clase viene responsive */
-          grid-template-columns: 1fr !important;
-        }
-      }
     </style>
   </head>
 
@@ -140,4 +128,5 @@
     <script type="text/babel" src="js/checkout.js"></script>
   </body>
 </html>
+
 
