@@ -6,6 +6,10 @@
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
+  <!-- Preloads (mejor LCP sin cambiar diseño) -->
+  <link rel="preload" as="image" href="assets/logo.png">
+  <link rel="preload" as="image" href="assets/welcome-poster.jpg">
+
   <!-- libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -80,11 +84,11 @@
     .toast{
       position:fixed; bottom:16px; left:50%;
       transform:translate(-50%,16px);
-      background:#3a1104;           /* marrón del header */
-      color:#fff;                    /* texto blanco */
-      border:2px solid var(--wk-gold); /* borde dorado */
+      background:var(--wk-brown-deep);
+      color:#fff;
+      border:2px solid var(--wk-gold);
       padding:10px 14px;
-      border-radius:9999px;          /* pill */
+      border-radius:9999px;
       font-weight:700;
       box-shadow:0 10px 20px rgba(58,17,4,.28);
       opacity:0;
@@ -99,8 +103,9 @@
 <body>
   <div id="root"></div>
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
+
+  <!-- Mantengo Babel en cliente como tu versión original -->
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
-
 
