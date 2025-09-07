@@ -122,78 +122,100 @@ function WelcomeModal({open,onClose,onStart}){
   );
 }
 
-/* ================= Modal Recordatorio (carrito pendiente) ================= */
+/* ================= Modal Recordatorio (carrito pendiente) — versión compacta ================= */
 function ReminderModal({open,onClose,cartCount}){
   const [visible,setVisible]=useState(false);
+  const [never,setNever]=useState(false);
+
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0);} },[open]);
   if(!open) return null;
 
-  const close=()=>{ setVisible(false); setTimeout(onClose,200); };
+  const close=()=>{
+    setVisible(false);
+    setTimeout(()=>{
+      if(never){
+        try{ localStorage.setItem('wk_reminder_optout','1'); }catch(e){}
+      }
+      onClose();
+    },200);
+  };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3"
          role="dialog" aria-modal="true" aria-labelledby="wk-remind-title"
          onClick={(e)=>{ if(e.target===e.currentTarget) close(); }}
          style={{background:'rgba(0,0,0,.45)'}}>
-      <div className="relative bg-white rounded-2xl border-2 w-full max-w-[920px] overflow-hidden"
+
+      {/* Más pequeño: ancho y alturas reducidas */}
+      <div className="relative bg-white rounded-2xl border-2 w-full max-w-[680px] overflow-hidden"
            style={{
              borderColor:'#c28432',
-             boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+             boxShadow:'0 16px 40px rgba(58,17,4,.26), 0 4px 18px rgba(58,17,4,.15)',
              transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
              opacity: visible ? 1 : 0,
              transition:'transform .2s ease, opacity .2s ease'
            }}>
         {/* Cerrar */}
         <button aria-label="Cerrar" onClick={close}
-                className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center"
+                className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center"
                 style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}>×</button>
 
-        {/* Contenido */}
-        <div className="grid md:grid-cols-[1fr,320px] gap-0">
-          {/* Texto (izquierda desktop / arriba y centrado en mobile) */}
-          <div className="p-5 md:p-7 order-1 md:order-none">
+        {/* Contenido compacto */}
+        <div className="grid md:grid-cols-[1fr,260px] gap-0">
+          {/* Texto */}
+          <div className="p-4 md:p-5 order-1 md:order-none">
             <h3 id="wk-remind-title"
-                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
+                className="text-[18px] md:text-[20px] font-extrabold leading-snug text-center md:text-left"
                 style={{color:'#8e240c'}}>
-              Tu pedido se quedó a medio antojo 🍓
+              ¡Tu antojo te está esperando! 🍓
             </h3>
 
-            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
+            <div className="mx-auto md:mx-0 my-2 h-[3px] w-14 rounded-full"
                  style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
 
-            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
-              Tienes <b style={{color:'#8e240c'}}>{cartCount}</b> waffle{cartCount>1?'s':''} esperando en tu carrito.
-              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            <p className="text-[14px] md:text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Tienes <b style={{color:'#8e240c'}}>{cartCount}</b> waffle{cartCount>1?'s':''} en tu carrito. ¿Deseas retomarlo?
             </p>
 
-            {/* En mobile, la imagen va en medio y estos botones van debajo */}
-            <div className="mt-5 hidden md:flex items-center gap-3">
+            {/* Botones compactos (desktop) */}
+            <div className="mt-4 hidden md:flex items-center gap-2">
               <button
                 onClick={()=>location.href='checkout.html'}
-                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
+                className="font-bold text-white rounded-full px-4 h-10 whitespace-nowrap min-w-[150px]"
                 style={{
                   background:'linear-gradient(180deg,#3a1104,#2a0c02)',
-                  boxShadow:'0 10px 24px rgba(58,17,4,.22)'
+                  boxShadow:'0 8px 20px rgba(58,17,4,.22)'
                 }}>
                 Ir al carrito
               </button>
               <button
                 onClick={close}
-                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[180px]"
+                className="rounded-full px-4 h-10 font-semibold whitespace-nowrap min-w-[150px]"
                 style={{
                   background:'#fff0d6',
                   border:'2px solid #c28432',
                   color:'#111',
-                  boxShadow:'0 6px 16px rgba(58,17,4,.08)'
+                  boxShadow:'0 6px 14px rgba(58,17,4,.08)'
                 }}>
                 Seguir comprando
               </button>
             </div>
+
+            {/* Opt-out */}
+            <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={never}
+                onChange={()=>setNever(v=>!v)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              No volver a mostrar este recordatorio
+            </label>
           </div>
 
-          {/* Video (derecha desktop / en medio mobile) */}
-          <div className="order-2 md:order-none px-5 pb-5 md:px-7 md:py-7">
-            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
+          {/* Video más pequeño */}
+          <div className="order-2 md:order-none px-4 pb-4 md:px-5 md:py-5">
+            <div className="rounded-[14px] border-2 overflow-hidden mx-auto"
                  style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
               <video
                 src={REMINDER_VIDEO}
@@ -207,23 +229,23 @@ function ReminderModal({open,onClose,cartCount}){
                 controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
                 onContextMenu={(e)=>e.preventDefault()}
                 className="w-full h-full object-contain bg-white"
-                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'240px' }}
               />
             </div>
           </div>
 
-          {/* Botones para mobile, debajo de la imagen */}
-          <div className="px-5 pb-6 md:hidden order-3 flex flex-col gap-3">
+          {/* Botones mobile debajo */}
+          <div className="px-4 pb-5 md:hidden order-3 flex flex-col gap-2">
             <button
               onClick={()=>location.href='checkout.html'}
-              className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
-              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}>
+              className="w-full font-bold text-white rounded-full px-4 h-11 whitespace-nowrap"
+              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 8px 20px rgba(58,17,4,.22)'}}>
               Ir al carrito
             </button>
             <button
               onClick={close}
-              className="w-full rounded-full px-5 h-12 font-semibold"
-              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}>
+              className="w-full rounded-full px-4 h-11 font-semibold"
+              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 14px rgba(58,17,4,.08)'}}>
               Seguir comprando
             </button>
           </div>
@@ -309,20 +331,25 @@ function App(){
 
   // Welcome: mostrar una vez por sesión, pero NO si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
-  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada)
+  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada), salvo opt-out
   const [reminderOpen,setReminderOpen]=useState(false);
   const [reminderCount,setReminderCount]=useState(0);
 
+  // *** Lógica de apertura (con opt-out persistente) ***
   useEffect(()=>{
     try {
+      const optOut = localStorage.getItem('wk_reminder_optout') === '1';
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
       const items = Array.isArray(cart) ? cart.reduce((a,b)=>a+(+b.qty||0),0) : 0;
       setReminderCount(items);
-      if(items>0){
+
+      // Si hay carrito y NO está en opt-out, muestra recordatorio (y NO bienvenida)
+      if(items > 0 && !optOut){
         setReminderOpen(true);
-        return; // no bienvenida si hay recordatorio
+        return;
       }
     } catch(e){}
+    // Bienvenida: una vez por sesión, solo si no hubo recordatorio
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
