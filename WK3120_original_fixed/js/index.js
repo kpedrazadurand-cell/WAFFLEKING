@@ -39,7 +39,7 @@ const SIROPES=[
 ];
 
 const PREMIUM=[
-  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p- duraznos",name:"Duraznos",price:3},
+  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
   {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
   {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
   {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
@@ -143,7 +143,7 @@ function WelcomeModal({open,onClose,onStart}){
   );
 }
 
-/* ============ MODAL: “Tu pedido se quedó a medio antojo” ============ */
+/* ============ MODAL: “Tu pedido se quedó a medio antojo” (mismo ancho que bienvenida) ============ */
 function ReminderModal({open,count,onClose,onGotoCart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -159,50 +159,50 @@ function ReminderModal({open,count,onClose,onGotoCart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2 w-full max-w-[920px] overflow-hidden"
+        className="relative bg-white rounded-2xl border-2 overflow-hidden"
         style={{
           borderColor:'#c28432',
+          width:'min(92vw, 560px)', // igual que bienvenida
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar */}
+        {/* X separada del contenido */}
         <button
-          aria-label="Cerrar" onClick={onClose}
-          className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center"
+          aria-label="Cerrar"
+          onClick={onClose}
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2"
           style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
-        {/* Contenido: desktop = grid; mobile = stack */}
-        <div className="grid md:grid-cols-[1fr,320px] gap-0 pt-6 md:pt-0">
-          {/* Texto */}
-          <div className="p-5 md:p-7">
+        {/* Desktop: grid (texto izq / video der). Mobile: stack -> texto → imagen → botones */}
+        <div className="grid md:grid-cols-[1fr,180px] gap-4 p-5 pt-10 items-center">
+          {/* TEXTO */}
+          <div className="flex flex-col items-center md:items-start">
             <h3 id="wk-reminder-title"
-                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
+                className="text-[20px] md:text-[22px] font-extrabold leading-snug text-center md:text-left"
                 style={{color:'#8e240c'}}>
               Tu pedido se quedó a medio antojo 🍓
             </h3>
-            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
-                 style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
-            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
-              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito.
-              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            <div className="h-[3px] w-16 rounded-full my-3" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <p className="text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
 
-            {/* Botones desktop (alineados con el texto) */}
-            <div className="mt-5 hidden md:flex items-center gap-3">
+            {/* BOTONES desktop (alineados con el texto a la izquierda) */}
+            <div className="mt-4 hidden md:flex items-center gap-3">
               <button
                 onClick={onGotoCart}
-                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
+                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[170px]"
                 style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
               >
                 Ir al carrito
               </button>
               <button
                 onClick={onClose}
-                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[180px]"
+                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[170px]"
                 style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
               >
                 Seguir comprando
@@ -210,24 +210,31 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* Video (derecha desktop / al medio mobile) */}
-          <div className="px-5 pb-2 md:px-7 md:py-7">
-            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
-                 style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
+          {/* VIDEO compacto a la derecha (desktop) / al centro (mobile) */}
+          <div className="w-full flex justify-center">
+            <div
+              className="rounded-[14px] border-2 overflow-hidden w-[140px] h-[160px] md:w-[180px] md:h-[200px]"
+              style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}
+            >
               <video
                 src={REMINDER_VIDEO}
                 poster={REMINDER_POSTER}
-                autoPlay muted loop playsInline disablePictureInPicture controls={false}
+                autoPlay
+                muted
+                loop
+                playsInline
+                disablePictureInPicture
+                controls={false}
                 controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
                 onContextMenu={(e)=>e.preventDefault()}
                 className="w-full h-full object-contain bg-white"
-                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+                style={{ pointerEvents:'none', userSelect:'none' }}
               />
             </div>
           </div>
 
-          {/* Botones mobile (debajo de la imagen) */}
-          <div className="px-5 pb-6 md:hidden flex flex-col gap-3">
+          {/* BOTONES mobile (debajo de la imagen) */}
+          <div className="md:hidden col-span-1 flex flex-col gap-3 mt-2">
             <button
               onClick={onGotoCart}
               className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
@@ -251,6 +258,15 @@ function ReminderModal({open,count,onClose,onGotoCart}){
 
 /* ============================ HEADER ============================ */
 function Header({count}){
+  function goCart(){
+    try{
+      // si van al carrito por el header, marcamos visto para que no reaparezca al volver
+      sessionStorage.setItem('wk_reminder_seen','1');
+      // si luego limpian el carrito en checkout y regresan, evitamos mostrar bienvenida una vez
+      sessionStorage.setItem('wk_skip_welcome_once','1');
+    }catch(_){}
+    location.href='checkout.html';
+  }
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
       <div className="flex items-center gap-3">
@@ -259,7 +275,7 @@ function Header({count}){
           <h1 className="font-extrabold text-lg">Waffle King</h1>
           <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
         </div>
-        <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
+        <button onClick={goCart} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
           {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
         </button>
@@ -323,25 +339,34 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
+  /* ====== LÓGICA MODALES ====== */
+
+  // Bienvenida: 1 vez por sesión, nunca si hay carrito.
+  // Además, si venimos de checkout con "seguir comprando", se puede setear en checkout:
+  // sessionStorage.setItem('wk_skip_welcome_once','1')
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
-    try {
+    try{
+      const skipOnce = sessionStorage.getItem('wk_skip_welcome_once')==='1';
+      if(skipOnce){ sessionStorage.removeItem('wk_skip_welcome_once'); return; }
+
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      const cartHasItems = Array.isArray(cart) && cart.length > 0;
-      if (cartHasItems) return; // no mostrar si hay carrito pendiente
-    } catch(e){}
-    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
-    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
+      const hasCart = Array.isArray(cart) && cart.reduce((a,b)=>a+(+b.qty||0),0)>0;
+      if (hasCart) return;
+
+      const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
+      if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
+    }catch(e){}
   },[]);
 
-  // Recordatorio: abrir SIEMPRE si hay carrito con cantidad > 0
+  // Recordatorio: mostrar solo si hay carrito y NO se marcó visto por ir al carrito.
   const [reminderOpen,setReminderOpen]=useState(false);
   useEffect(()=>{
     try{
       const list = JSON.parse(localStorage.getItem('wk_cart')||'[]');
       const qty  = Array.isArray(list) ? list.reduce((a,b)=>a+(+b.qty||0),0) : 0;
-      if(qty>0) setReminderOpen(true);
+      const alreadySeen = sessionStorage.getItem('wk_reminder_seen')==='1';
+      if(qty>0 && !alreadySeen) setReminderOpen(true);
     }catch(e){}
   },[]);
 
@@ -398,7 +423,16 @@ function App(){
       open={reminderOpen}
       count={count}
       onClose={()=>setReminderOpen(false)}
-      onGotoCart={()=>{ setReminderOpen(false); location.href='checkout.html'; }}
+      onGotoCart={()=>{
+        try{
+          // marcamos que ya se atendió el recordatorio (no mostrar de nuevo al volver)
+          sessionStorage.setItem('wk_reminder_seen','1');
+          // si limpian carrito en checkout y regresan, omitimos bienvenida una vez
+          sessionStorage.setItem('wk_skip_welcome_once','1');
+        }catch(_){}
+        setReminderOpen(false);
+        location.href='checkout.html';
+      }}
     />
 
     {/* MODAL DE BIENVENIDA */}
@@ -598,3 +632,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
