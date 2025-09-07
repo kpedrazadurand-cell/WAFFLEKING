@@ -6,6 +6,10 @@
     <title>Waffle King — Datos de entrega y pago</title>
     <link rel="icon" type="image/png" href="assets/logo.png" />
 
+    <!-- Preloads para mejorar LCP sin cambiar diseño -->
+    <link rel="preload" as="image" href="assets/logo.png">
+    <link rel="preload" as="image" href="assets/yape-qr.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -17,6 +21,7 @@
         --wk-brown-deep:#3a1104;   /* header + badge carrito */
         --wk-gold:#c28432;         /* dorado (bordes / acentos) */
         --wk-cream:#fff0d6;        /* crema (fondo) */
+        --wk-title-red:#b32b11;    /* rojo títulos/subtítulos */
       }
 
       body{
@@ -64,6 +69,7 @@
       .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
       .btn-disabled{opacity:.5;cursor:not-allowed}
 
+      /* Toast: se conserva el color original (#b45309) */
       .toast{
         position:fixed;bottom:16px;left:50%;
         transform:translate(-50%,16px);
@@ -78,6 +84,8 @@
   <body>
     <div id="root"></div>
     <div id="toast" class="toast">Completa los datos / agrega productos</div>
+    <!-- Mantengo Babel en cliente como en tu proyecto -->
     <script type="text/babel" src="js/checkout.js"></script>
   </body>
 </html>
+
