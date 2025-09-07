@@ -46,7 +46,16 @@ function HeaderMini({onSeguir}){
             <p className="text-xs text-slate-700">Confirmación y pago</p>
           </div>
           <div className="ml-auto">
-            <button onClick={onSeguir} className="btn-pill border border-amber-300 hover:bg-amber-50 text-amber-800">
+            {/* === Cambiado: fondo crema + texto negro === */}
+            <button
+              onClick={onSeguir}
+              className="btn-pill border"
+              style={{
+                background: 'var(--wk-cream)',
+                borderColor: 'var(--wk-gold)',
+                color: '#111'
+              }}
+            >
               Seguir comprando
             </button>
           </div>
@@ -600,8 +609,15 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
-            <button onClick={abrirPicker}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 transition">
+            /* === Cambiado: "Subir voucher" rojo vino + blanco en negrita === */
+            <button
+              onClick={abrirPicker}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
+              style={{
+                backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)',
+                boxShadow:'0 8px 18px rgba(58,17,4,.22)'
+              }}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
               Subir voucher
             </button>
@@ -906,12 +922,20 @@ function App(){
         voucherPreview={voucherPreview}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        <button onClick={enviar}
+        {/* === Cambiado: deshabilitado marrón difuminado; habilitado rojo vino + blanco bold === */}
+        <button
+          onClick={enviar}
           disabled={!canSend}
-          className={"w-full btn-pill text-white "+(canSend
-            ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800"
-            : "btn-disabled bg-amber-400")}
-          aria-disabled={!canSend}>
+          className={
+            "w-full btn-pill font-bold text-white " + (
+              canSend
+                ? "bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
+                : "btn-disabled"
+            )
+          }
+          style={ canSend ? undefined : { backgroundColor:'rgba(58,17,4,0.35)', color:'#fff' } }
+          aria-disabled={!canSend}
+        >
           Enviar pedido por WhatsApp
         </button>
       </section>
@@ -920,4 +944,3 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
