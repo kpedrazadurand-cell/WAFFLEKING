@@ -61,7 +61,19 @@ function HeaderMini({onSeguir}){
   );
 }
 
-function PhoneInput({value,onChange}){
+/* ===== Validador de entrega ===== */
+function validateDelivery(s){
+  const errs = {};
+  if(!s.nombre?.trim()) errs.nombre = "Ingresa tu nombre";
+  if(!/^\d{9}$/.test((s.telefono||"").trim())) errs.telefono = "Número de 9 dígitos";
+  if(!s.distrito?.trim()) errs.distrito = "Selecciona distrito";
+  if(!s.direccion?.trim()) errs.direccion = "Ingresa dirección";
+  if(!s.fecha?.trim()) errs.fecha = "Selecciona fecha";
+  if(!s.hora?.trim()) errs.hora = "Selecciona hora";
+  return errs;
+}
+
+function PhoneInput({value,onChange,error}){
   const [val,setVal]=useState((value||"").replace(/\D/g,"").slice(-9));
   useEffect(()=>{ setVal((value||"").replace(/\D/g,"").slice(-9)); },[value]);
   function handle(e){
@@ -73,8 +85,17 @@ function PhoneInput({value,onChange}){
   return (
     <div>
       <label className="text-sm font-medium">Teléfono</label>
-      <input value={val} onChange={handle} inputMode="numeric" placeholder="9xxxxxxxx"
-             className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+      <input
+        value={val}
+        onChange={handle}
+        inputMode="numeric"
+        placeholder="9xxxxxxxx"
+        aria-invalid={!!error}
+        className={
+          "mt-1 w-full rounded-lg border p-2 " +
+          (error ? "border-[#b32b11]" : "border-slate-300")
+        }
+      />
       {preview && <div className="text-xs text-slate-500 mt-1">Formato: {preview}</div>}
     </div>
   );
@@ -82,7 +103,7 @@ function PhoneInput({value,onChange}){
 
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
-function DatosEntrega({state,setState}){
+function DatosEntrega({state,setState, errors={}}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
   useEffect(()=>{
@@ -161,31 +182,110 @@ function DatosEntrega({state,setState}){
         {/* subtítulo rojo vino + bold */}
         <h3 className="font-bold text-[#b32b11] mb-2">Datos de entrega</h3>
         <div className="space-y-2">
-          <div><label className="text-sm font-medium">Nombre</label><input value={nombre||""} onChange={e=>set('nombre',e.target.value)} placeholder="Tu nombre" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-          <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)}/>
-          <div>
+          {/* Nombre */}
+          <div id="field-nombre">
+            <label className="text-sm font-medium">Nombre</label>
+            <input
+              value={nombre||""}
+              onChange={e=>set('nombre',e.target.value)}
+              placeholder="Tu nombre"
+              aria-invalid={!!errors.nombre}
+              className={"mt-1 w-full rounded-lg border p-2 " + (errors.nombre ? "border-[#b32b11]" : "border-slate-300")}
+            />
+            {errors.nombre && <div className="text-xs text-[#b32b11] mt-1">{errors.nombre}</div>}
+          </div>
+
+          {/* Teléfono */}
+          <div id="field-telefono">
+            <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)} error={errors.telefono}/>
+            {errors.telefono && <div className="text-xs text-[#b32b11] mt-1">{errors.telefono}</div>}
+          </div>
+
+          {/* Dirección + Mi ubicación */}
+          <div id="field-direccion">
             <label className="text-sm font-medium">Dirección</label>
             <div className="mt-1 flex gap-2">
-              <input id="direccion" value={direccion||""} onChange={e=>set('direccion',e.target.value)}
-                placeholder="Calle 123, Mz Lt" className="flex-1 min-w-0 rounded-lg border border-slate-300 p-2"/>
-              <button type="button" onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm" title="Usar mi ubicación actual">
+              <input
+                value={direccion||""}
+                onChange={e=>set('direccion',e.target.value)}
+                placeholder="Calle 123, Mz Lt"
+                aria-invalid={!!errors.direccion}
+                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[#b32b11]" : "border-slate-300")}
+              />
+              <button
+                type="button"
+                onClick={handleUbicacion}
+                className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm"
+                title="Usar mi ubicación actual"
+                style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
+              >
                 📍 Mi ubicación
               </button>
             </div>
+            {errors.direccion && <div className="text-xs text-[#b32b11] mt-1">{errors.direccion}</div>}
           </div>
-          <div>
+
+          {/* Distrito */}
+          <div id="field-distrito">
             <label className="text-sm font-medium">Distrito</label>
-            <select value={distrito||""} onChange={e=>set('distrito',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2">
+            <select
+              value={distrito||""}
+              onChange={e=>set('distrito',e.target.value)}
+              aria-invalid={!!errors.distrito}
+              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[#b32b11]" : "border-slate-300")}
+            >
               <option value="">Selecciona distrito</option>
               {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
             </select>
+            {errors.distrito && <div className="text-xs text-[#b32b11] mt-1">{errors.distrito}</div>}
           </div>
-          <div><label className="text-sm font-medium">Referencia</label><input value={referencia||""} onChange={e=>set('referencia',e.target.value)} placeholder="Frente a parque / tienda / etc." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-          <div><label className="text-sm font-medium">Link de Google Maps (opcional)</label><input value={mapLink||""} onChange={e=>set('mapLink',e.target.value)} placeholder="Pega tu link" className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+
+          {/* Referencia (opcional) */}
+          <div>
+            <label className="text-sm font-medium">Referencia</label>
+            <input
+              value={referencia||""}
+              onChange={e=>set('referencia',e.target.value)}
+              placeholder="Frente a parque / tienda / etc."
+              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+            />
+          </div>
+
+          {/* Link Maps (opcional) */}
+          <div>
+            <label className="text-sm font-medium">Link de Google Maps (opcional)</label>
+            <input
+              value={mapLink||""}
+              onChange={e=>set('mapLink',e.target.value)}
+              placeholder="Pega tu link"
+              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+            />
+          </div>
+
+          {/* Fecha y Hora */}
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-sm font-medium">Fecha de entrega</label><input type="date" value={fecha||""} onChange={e=>set('fecha',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
-            <div><label className="text-sm font-medium">Hora</label><input type="time" value={hora||""} onChange={e=>set('hora',e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2"/></div>
+            <div id="field-fecha">
+              <label className="text-sm font-medium">Fecha de entrega</label>
+              <input
+                type="date"
+                value={fecha||""}
+                onChange={e=>set('fecha',e.target.value)}
+                aria-invalid={!!errors.fecha}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[#b32b11]" : "border-slate-300")}
+              />
+              {errors.fecha && <div className="text-xs text-[#b32b11] mt-1">{errors.fecha}</div>}
+            </div>
+            <div id="field-hora">
+              <label className="text-sm font-medium">Hora</label>
+              <input
+                type="time"
+                value={hora||""}
+                onChange={e=>set('hora',e.target.value)}
+                aria-invalid={!!errors.hora}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[#b32b11]" : "border-slate-300")}
+              />
+              {errors.hora && <div className="text-xs text-[#b32b11] mt-1">{errors.hora}</div>}
+            </div>
           </div>
         </div>
       </div>
@@ -516,7 +616,7 @@ function CartList({cart, setCart, canCalc}){
 }
 
 /* ================= PAYMENT BOX ================= */
-function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPreview}){
+function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPreview, voucherErr}){
   const [open,setOpen]=useState(false);
   const [copied,setCopied]=useState(false);
   const [error,setError]=useState("");
@@ -610,7 +710,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3" id="voucher-area">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
@@ -641,6 +741,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           )}
 
           {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
+          {voucherErr && <div className="text-xs text-[#b32b11] mt-2">{voucherErr}</div>}
         </div>
       </div>
 
@@ -755,7 +856,7 @@ async function registrarPedidoGSheet(payload) {
   }
 }
 
-/* ================== APP (con recuperación robusta del carrito) ================== */
+/* ================== APP (con validación guiada) ================== */
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({
@@ -763,6 +864,10 @@ function App(){
     direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",
     fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
   });
+
+  // errores formulario + voucher
+  const [errors, setErrors] = useState({});
+  const [voucherErr, setVoucherErr] = useState("");
 
   function safeParse(json){ try{ return JSON.parse(json); }catch(_){ return null; } }
   function normalizeCart(x){ return Array.isArray(x)?x:[]; }
@@ -838,7 +943,7 @@ function App(){
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
-  function onVoucherSelect(file, previewUrl){ setVoucherFile(file); setVoucherPreview(previewUrl || ""); }
+  function onVoucherSelect(file, previewUrl){ setVoucherFile(file); setVoucherPreview(previewUrl || ""); setVoucherErr(""); }
   function onVoucherClear(){ setVoucherFile(null); setVoucherPreview(""); }
 
   async function subirVoucherAhora(file){
@@ -853,10 +958,9 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR ======
+  // ====== ENVIAR (con validación guiada) ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
-    if(!voucherFile){ toast("Sube el voucher de pago"); return; }
 
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const preWin = !isMobile ? window.open('', '_blank') : null;
@@ -906,19 +1010,27 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  // ====== RESTRICCIÓN: datos completos + voucher ======
-  const deliveryValid = Boolean(
-    (state.nombre||"").trim() &&
-    (state.telefono||"").trim().length===9 &&
-    (state.distrito||"").trim() &&
-    (state.direccion||"").trim() &&
-    (state.fecha||"").trim() &&
-    (state.hora||"").trim()
-  );
-  const canSend = !!(voucherFile && deliveryValid);
-
+  // Click del CTA: valida, marca errores, hace scroll y/o envía
   function handleEnviarClick(){
-    if(!canSend){
+    const errs = validateDelivery(state);
+    const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
+
+    setErrors(errs);
+    setVoucherErr(vErr);
+
+    if (Object.keys(errs).length || vErr){
+      const order = ["nombre","telefono","direccion","distrito","fecha","hora"];
+      const first = order.find(k => errs[k]);
+      if(first){
+        const el = document.getElementById("field-"+first);
+        if(el){
+          el.scrollIntoView({behavior:"smooth", block:"center"});
+          const input = el.querySelector("input,select,textarea");
+          input?.focus?.();
+        }
+      }else{
+        document.getElementById("voucher-area")?.scrollIntoView({behavior:"smooth", block:"center"});
+      }
       toast("Completar datos de entrega y subir voucher de pago");
       return;
     }
@@ -928,7 +1040,7 @@ function App(){
   return (
     <div>
       <HeaderMini onSeguir={seguirComprando}/>
-      <DatosEntrega state={state} setState={setState}/>
+      <DatosEntrega state={state} setState={setState} errors={errors}/>
       <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
       <PaymentBox
         total={total}
@@ -936,20 +1048,13 @@ function App(){
         onVoucherSelect={onVoucherSelect}
         onVoucherClear={onVoucherClear}
         voucherPreview={voucherPreview}
+        voucherErr={voucherErr}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* deshabilitado: marrón difuminado; habilitado: rojo vino + blanco bold */}
+        {/* CTA SIEMPRE ACTIVO: rojo vino + blanco bold */}
         <button
           onClick={handleEnviarClick}
-          className={
-            "w-full btn-pill font-bold text-white " + (
-              canSend
-                ? "bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
-                : "btn-disabled"
-            )
-          }
-          style={ canSend ? undefined : { backgroundColor:'rgba(58,17,4,0.35)', color:'#fff' } }
-          aria-disabled={!canSend}
+          className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
         >
           Enviar pedido por WhatsApp
         </button>
