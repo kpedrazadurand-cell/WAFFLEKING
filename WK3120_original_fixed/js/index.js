@@ -143,7 +143,7 @@ function WelcomeModal({open,onClose,onStart}){
   );
 }
 
-/* ============ MODAL: “Tu pedido se quedó a medio antojo” (mismo ancho que bienvenida) ============ */
+/* ============ MODAL: Recordatorio (mismo ancho que bienvenida, compacto) ============ */
 function ReminderModal({open,count,onClose,onGotoCart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -159,7 +159,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2 overflow-hidden"
+        className="relative bg-white rounded-2xl border-2 overflow-visible"
         style={{
           borderColor:'#c28432',
           width:'min(92vw, 560px)', // igual que bienvenida
@@ -177,8 +177,8 @@ function ReminderModal({open,count,onClose,onGotoCart}){
           style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
-        {/* Desktop: grid (texto izq / video der). Mobile: stack -> texto → imagen → botones */}
-        <div className="grid md:grid-cols-[1fr,180px] gap-4 p-5 pt-10 items-center">
+        {/* PC: texto izquierda / video derecha. Móvil: texto → imagen → botones */}
+        <div className="grid md:grid-cols-[1fr,200px] gap-4 p-5 pt-10 items-center">
           {/* TEXTO */}
           <div className="flex flex-col items-center md:items-start">
             <h3 id="wk-reminder-title"
@@ -191,7 +191,7 @@ function ReminderModal({open,count,onClose,onGotoCart}){
               Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
 
-            {/* BOTONES desktop (alineados con el texto a la izquierda) */}
+            {/* BOTONES desktop */}
             <div className="mt-4 hidden md:flex items-center gap-3">
               <button
                 onClick={onGotoCart}
@@ -210,10 +210,10 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* VIDEO compacto a la derecha (desktop) / al centro (mobile) */}
+          {/* VIDEO: marco con padding para que el personaje quepa completo */}
           <div className="w-full flex justify-center">
             <div
-              className="rounded-[14px] border-2 overflow-hidden w-[140px] h-[160px] md:w-[180px] md:h-[200px]"
+              className="rounded-[14px] border-2 overflow-hidden bg-white p-2 w-[180px] h-[210px] md:w-[200px] md:h-[230px]"
               style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}
             >
               <video
@@ -227,13 +227,13 @@ function ReminderModal({open,count,onClose,onGotoCart}){
                 controls={false}
                 controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
                 onContextMenu={(e)=>e.preventDefault()}
-                className="w-full h-full object-contain bg-white"
+                className="w-full h-full object-contain"
                 style={{ pointerEvents:'none', userSelect:'none' }}
               />
             </div>
           </div>
 
-          {/* BOTONES mobile (debajo de la imagen) */}
+          {/* BOTONES móvil */}
           <div className="md:hidden col-span-1 flex flex-col gap-3 mt-2">
             <button
               onClick={onGotoCart}
@@ -260,10 +260,8 @@ function ReminderModal({open,count,onClose,onGotoCart}){
 function Header({count}){
   function goCart(){
     try{
-      // si van al carrito por el header, marcamos visto para que no reaparezca al volver
-      sessionStorage.setItem('wk_reminder_seen','1');
-      // si luego limpian el carrito en checkout y regresan, evitamos mostrar bienvenida una vez
-      sessionStorage.setItem('wk_skip_welcome_once','1');
+      sessionStorage.setItem('wk_reminder_seen','1');     // no mostrar recordatorio al volver
+      sessionStorage.setItem('wk_skip_welcome_once','1'); // saltar bienvenida una vez
     }catch(_){}
     location.href='checkout.html';
   }
@@ -342,8 +340,7 @@ function App(){
   /* ====== LÓGICA MODALES ====== */
 
   // Bienvenida: 1 vez por sesión, nunca si hay carrito.
-  // Además, si venimos de checkout con "seguir comprando", se puede setear en checkout:
-  // sessionStorage.setItem('wk_skip_welcome_once','1')
+  // Si se vuelve desde checkout (seguir comprando), se salta una vez.
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
     try{
@@ -359,7 +356,7 @@ function App(){
     }catch(e){}
   },[]);
 
-  // Recordatorio: mostrar solo si hay carrito y NO se marcó visto por ir al carrito.
+  // Recordatorio: mostrar si hay carrito y NO se marcó visto por ir al carrito.
   const [reminderOpen,setReminderOpen]=useState(false);
   useEffect(()=>{
     try{
@@ -425,10 +422,8 @@ function App(){
       onClose={()=>setReminderOpen(false)}
       onGotoCart={()=>{
         try{
-          // marcamos que ya se atendió el recordatorio (no mostrar de nuevo al volver)
-          sessionStorage.setItem('wk_reminder_seen','1');
-          // si limpian carrito en checkout y regresan, omitimos bienvenida una vez
-          sessionStorage.setItem('wk_skip_welcome_once','1');
+          sessionStorage.setItem('wk_reminder_seen','1');   // no mostrar de nuevo al volver
+          sessionStorage.setItem('wk_skip_welcome_once','1'); // saltar bienvenida una vez
         }catch(_){}
         setReminderOpen(false);
         location.href='checkout.html';
@@ -632,4 +627,5 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
