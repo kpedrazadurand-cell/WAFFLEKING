@@ -1,20 +1,11 @@
 /* global React, ReactDOM */
 const {useState,useMemo,useEffect}=React;
 
-/* ================== Constantes UX ================== */
-const DAY_MS = 24*60*60*1000;       // 24h cooldown
-const SNOOZE_MS = 10*60*1000;       // 10 min snooze tras cerrar
-const ABANDON_MS = 2*60*60*1000;    // 2h sin tocar el carrito => abandono
-
-/* Páginas donde NO se muestran modales */
-const BLOCKED_PAGES = ['checkout', 'pago', 'gracias'];
-
-/* ================== Assets ================== */
 const LOGO="assets/logo.png";
 const WELCOME_VIDEO="assets/welcome.mp4";
 const WELCOME_POSTER="assets/welcome-poster.jpg";
 
-/* === Recordatorio de carrito === */
+/* === Nuevo: recordatorio de carrito === */
 const REMINDER_VIDEO="assets/aviso.mp4";
 const REMINDER_POSTER="assets/aviso-poster.jpg";
 
@@ -55,31 +46,14 @@ const PREMIUM=[
   {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
-/* ================== Utilidades ================== */
 const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
-function now(){ return Date.now(); }
-function getLS(key, def=null){ try{ const v = localStorage.getItem(key); return v==null?def:v; }catch(e){ return def; } }
-function getLSNum(key, def=0){ const v = +getLS(key, def); return Number.isFinite(v)?v:def; }
-function setLS(key, val){ try{ localStorage.setItem(key, String(val)); }catch(e){} }
-function onBlockedPage(){
-  const p = (location.pathname||'').toLowerCase();
-  return BLOCKED_PAGES.some(seg => p.includes(seg));
-}
-function getCart(){
-  try{
-    const raw = JSON.parse(localStorage.getItem('wk_cart')||'[]');
-    return Array.isArray(raw)?raw:[];
-  }catch(e){ return []; }
-}
-function getCartCount(){ return getCart().reduce((a,b)=>a+(+b.qty||0),0); }
-
-/* ================== Hook contador carrito ================== */
 function useCartCount(){
-  const [c,setC]=useState(getCartCount);
+  const getCount=()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0);
+  const [c,setC]=useState(getCount);
   useEffect(()=>{
-    const on=()=>setC(getCartCount());
+    const on=()=>setC(getCount());
     window.addEventListener("storage",on);
     return()=>window.removeEventListener("storage",on)
   },[]);
@@ -160,9 +134,9 @@ function ReminderModal({open,onClose,cartCount}){
     setVisible(false);
     setTimeout(()=>{
       if(never){
-        setLS('wk_reminder_optout','1'); // Opt-out persistente
+        try{ localStorage.setItem('wk_reminder_optout','1'); }catch(e){}
       }
-      onClose(); // El padre registra dismiss/timeouts
+      onClose();
     },200);
   };
 
@@ -338,40 +312,7 @@ function ImagePreview({src,title,onClose}){
   );
 }
 
-/* ================== Lógica de decisión de modales ================== */
-function shouldShowWelcome({cartCount}){
-  if(onBlockedPage()) return false;
-  if(cartCount>0) return false;
-
-  const seenSession = sessionStorage.getItem('wk_welcome_seen') === '1';
-  if(seenSession) return false;
-
-  // Cooldown 24h para no repetir todos los días si abre múltiples sesiones
-  const lastShown = getLSNum('wk_welcome_last_shown_at', 0);
-  if(now() - lastShown <= DAY_MS) return false;
-
-  return true;
-}
-function shouldShowReminder({cartCount}){
-  if(onBlockedPage()) return false;
-  if(cartCount<=0) return false;
-
-  if(getLS('wk_reminder_optout') === '1') return false;
-
-  const lastShown = getLSNum('wk_reminder_last_shown_at', 0);
-  if(now() - lastShown <= DAY_MS) return false; // cooldown 24h
-
-  const lastDismiss = getLSNum('wk_reminder_last_dismiss_at', 0);
-  if(now() - lastDismiss <= SNOOZE_MS) return false; // snooze 10m
-
-  const cartUpdatedAt = getLSNum('wk_cart_updated_at', 0);
-  const abandoned = (now() - cartUpdatedAt) > ABANDON_MS; // >2h sin tocar
-  return abandoned;
-}
-
-/* ================== App ================== */
 function App(){
-  // Limpieza de delivery si venía marcado
   useEffect(()=>{try{if(localStorage.getItem('wk_clear_delivery')==='1'){localStorage.removeItem('wk_delivery');localStorage.removeItem('wk_clear_delivery');}}catch(e){}},[]);
 
   const [packId,setPack]=useState(null);
@@ -388,38 +329,37 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Estados de modales
+  // Welcome: mostrar una vez por sesión, pero NO si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
+  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada), salvo opt-out
   const [reminderOpen,setReminderOpen]=useState(false);
   const [reminderCount,setReminderCount]=useState(0);
 
-  // Decisión de modales al cargar
+  // *** Lógica de apertura (con opt-out persistente) ***
   useEffect(()=>{
     try {
-      const items = getCartCount();
+      const optOut = localStorage.getItem('wk_reminder_optout') === '1';
+      const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
+      const items = Array.isArray(cart) ? cart.reduce((a,b)=>a+(+b.qty||0),0) : 0;
       setReminderCount(items);
 
-      if(shouldShowReminder({cartCount: items})){
+      // Si hay carrito y NO está en opt-out, muestra recordatorio (y NO bienvenida)
+      if(items > 0 && !optOut){
         setReminderOpen(true);
-        setLS('wk_reminder_last_shown_at', now());
-        return; // si hay reminder, no hay bienvenida
-      }
-      if(shouldShowWelcome({cartCount: items})){
-        setWelcomeOpen(true);
-        sessionStorage.setItem('wk_welcome_seen','1');
-        setLS('wk_welcome_last_shown_at', now());
+        return;
       }
     } catch(e){}
+    // Bienvenida: una vez por sesión, solo si no hubo recordatorio
+    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
+    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
-  // Reset de opciones al cambiar pack
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
     setNotes(""); setRec("");
   },[packId]);
 
-  // Cálculos de precio
   const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
   const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
   const masaDelta = masaId ? (MASAS.find(m => m.id === masaId)?.delta || 0) : 0;
@@ -450,13 +390,9 @@ function App(){
       premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
       recipient:rec, notes:notes, unitPrice:unit,qty:qty
     };
-    const cart=getCart();
+    const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
     cart.push(item);
     localStorage.setItem("wk_cart",JSON.stringify(cart));
-
-    // Marca de actualización del carrito (para abandono)
-    setLS('wk_cart_updated_at', now());
-
     setPack(null); setTops([]); setSirs([]);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
     setNotes(""); setRec("");
@@ -471,12 +407,6 @@ function App(){
     setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 50);
   }
 
-  // Handler al cerrar Reminder → registra dismiss (para snooze)
-  function handleReminderClose(){
-    setReminderOpen(false);
-    setLS('wk_reminder_last_dismiss_at', now());
-  }
-
   return (<div>
     {/* MODALES */}
     <WelcomeModal
@@ -486,7 +416,7 @@ function App(){
     />
     <ReminderModal
       open={reminderOpen}
-      onClose={handleReminderClose}
+      onClose={()=>setReminderOpen(false)}
       cartCount={reminderCount || count}
     />
 
@@ -680,4 +610,3 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
