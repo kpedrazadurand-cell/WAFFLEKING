@@ -12,17 +12,17 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-      /* ===== Paleta unificada ===== */
+      /* ===== Paleta ===== */
       :root{
         --wk-brown-deep:#3a1104;   /* header + badge carrito */
         --wk-gold:#c28432;         /* dorado (bordes / acentos) */
         --wk-cream:#fff0d6;        /* crema (fondo) */
-        --wk-line:#ead6b6;         /* borde suave para inputs */
+        --wk-line:#ead6b6;         /* borde suave */
       }
 
       body{
         font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
-        background: var(--wk-cream);   /* fondo crema */
+        background: var(--wk-cream);
         min-height:100vh;
       }
 
@@ -34,26 +34,20 @@
         border-bottom:0 !important;
       }
       header.glass h1, header.glass p{ color:#fff !important; }
-
-      /* Pill bajo el header */
       header.glass .rounded-full{
         background: var(--wk-cream) !important;
         border: 2px solid var(--wk-gold) !important;
         color:#111 !important;
       }
-
-      /* Carrito y badge */
       header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
       header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
-
-      /* >>> Badge del carrito: MARRÓN y texto blanco */
       header.glass .bg-amber-600{
         background-color: var(--wk-brown-deep) !important;
         color:#fff !important;
         border:1px solid var(--wk-cream);
       }
 
-      /* ===== Cards blancas: mismo borde que la pill ===== */
+      /* Cards blancas con borde dorado */
       main .rounded-2xl.bg-white.border,
       section .rounded-2xl.bg-white.border{
         border-color: var(--wk-gold) !important;
@@ -64,7 +58,6 @@
       .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
       .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
       .btn-disabled{opacity:.5;cursor:not-allowed}
-
       .toast{
         position:fixed;bottom:16px;left:50%;
         transform:translate(-50%,16px);
@@ -76,76 +69,67 @@
 
       /* ==========================================================
          ============  APARIENCIA DEL FORMULARIO (UI)  ============
-         Sólo estilos. No cambia la lógica.
+         Solo estilos. No cambia la lógica JS.
          ========================================================== */
 
-      /* Inputs 100% blancos, con borde dorado suave */
-      main input[type="text"],
-      main input[type="tel"],
-      main input[type="email"],
-      main input[type="date"],
-      main input[type="time"],
-      main input[type="number"],
-      main textarea,
-      main select{
-        width:100%;
+      /* Inputs / selects / textarea: fondo BLANCO, borde suave dorado */
+      #root main input,
+      #root main select,
+      #root main textarea{
         background:#fff !important;
-        border:1.5px solid var(--wk-line);
-        border-radius:12px;
-        color:#111;
-        font-size:16px;
-        padding:12px 14px;
-        height:48px;
-        outline:none;
-        box-shadow:0 1px 0 rgba(0,0,0,.02) inset;
-        -webkit-appearance:none;
-        appearance:none;
+        border:1.5px solid var(--wk-line) !important;
+        border-radius:12px !important;
+        color:#111 !important;
+        padding:12px 14px !important;
+        height:48px !important;
+        outline:none !important;
+        box-shadow:0 1px 0 rgba(0,0,0,.02) inset !important;
       }
-      main textarea{
-        height:auto;
-        min-height:110px;
-        resize:vertical;
-      }
-      main input:focus,
-      main textarea:focus,
-      main select:focus{
-        border-color:var(--wk-gold);
-        box-shadow:0 0 0 3px rgba(194,132,50,.18);
+      #root main textarea{ height:auto !important; min-height:110px !important; resize:vertical !important; }
+      #root main input:focus,
+      #root main select:focus,
+      #root main textarea:focus{
+        border-color:var(--wk-gold) !important;
+        box-shadow:0 0 0 3px rgba(194,132,50,.18) !important;
       }
 
       /* Labels más claros y separados */
-      main label{
-        display:block;
-        margin-bottom:6px;
-        font-weight:600;
-        color:#4e3427;
+      #root main label{
+        display:block !important;
+        margin-bottom:6px !important;
+        font-weight:600 !important;
+        color:#4e3427 !important;
       }
 
-      /* Select con “flecha” personalizada */
-      main select{
-        padding-right:40px;
-        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c28432' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-        background-repeat:no-repeat;
-        background-position:right 12px center;
-        background-size:12px;
+      /* Select: flechita dorada */
+      #root main select{
+        -webkit-appearance:none !important;
+        appearance:none !important;
+        padding-right:40px !important;
+        background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c28432' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") !important;
+        background-repeat:no-repeat !important;
+        background-position:right 12px center !important;
+        background-size:12px !important;
       }
 
-      /* iOS Safari: evita fondo gris de date/time */
+      /* iOS Safari: evita gris en date/time */
       input[type="date"]::-webkit-datetime-edit,
       input[type="time"]::-webkit-datetime-edit{ color:#111; }
       input[type="date"]::-webkit-calendar-picker-indicator,
       input[type="time"]::-webkit-calendar-picker-indicator{
         filter:hue-rotate(0deg) saturate(0) brightness(0.3);
-        opacity:.7;
+        opacity:.75;
       }
 
-      /* --- Layout móvil: apila grids de 2 columnas (Fecha/Hora, etc.) --- */
+      /* Espaciado base para grids */
+      #root main .grid{ row-gap:14px; column-gap:14px; }
+
+      /* MÓVIL: apilar cualquier grid de 2 columnas (ej: Distrito / Fecha / Hora) */
       @media (max-width: 640px){
-        /* cualquier grid de 2 cols dentro del main pasa a 1 col */
-        main .grid.grid-cols-2{ grid-template-columns: 1fr !important; gap:12px !important; }
-        /* por si usan gap muy corto */
-        main .gap-2{ gap:12px !important; }
-        main .gap-3{ gap:14px !important; }
+        #root main .grid.grid-cols-2,
+        #root main .sm\:grid-cols-2{           /* por si la clase viene responsive */
+          grid-template-columns: 1fr !important;
+        }
       }
     </style>
   </head>
@@ -156,3 +140,4 @@
     <script type="text/babel" src="js/checkout.js"></script>
   </body>
 </html>
+
