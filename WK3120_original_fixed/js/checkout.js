@@ -39,7 +39,7 @@ const SIROPES=[
 ];
 
 const PREMIUM=[
-  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p- duraznos",name:"Duraznos",price:3},
+  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
   {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
   {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
   {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
@@ -175,24 +175,68 @@ function ReminderModal({open,count,onClose,onGotoCart}){
           style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
-        {/* Contenido: desktop = grid; mobile = stack */}
-        <div className="grid md:grid-cols-[1fr,320px] gap-0 pt-6 md:pt-0">
-          {/* Texto */}
-          <div className="p-5 md:p-7">
-            <h3 id="wk-reminder-title"
-                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
-                style={{color:'#8e240c'}}>
+        {/* --------- MOBILE STACK --------- */}
+        <div className="md:hidden px-5 pt-6 pb-6 pr-16">
+          <h3 id="wk-reminder-title"
+              className="text-[22px] font-extrabold leading-snug text-center"
+              style={{color:'#8e240c'}}>
+            Tu pedido se quedó a medio antojo 🍓
+          </h3>
+          <div className="mx-auto my-3 h-[3px] w-16 rounded-full"
+               style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+          <p className="text-[16px] text-[#4e3427] leading-relaxed text-center">
+            Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito.
+            ¿Deseas retomarlo?
+          </p>
+
+          {/* Imagen/Video al MEDIO */}
+          <div className="mt-5 mb-5">
+            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
+                 style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
+              <video
+                src={REMINDER_VIDEO}
+                poster={REMINDER_POSTER}
+                autoPlay muted loop playsInline disablePictureInPicture controls={false}
+                controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                onContextMenu={(e)=>e.preventDefault()}
+                className="w-full h-full object-contain bg-white"
+                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+              />
+            </div>
+          </div>
+
+          {/* Botones debajo */}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={onGotoCart}
+              className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
+              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
+            >
+              Ir al carrito
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full rounded-full px-5 h-12 font-semibold"
+              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
+            >
+              Seguir comprando
+            </button>
+          </div>
+        </div>
+
+        {/* --------- DESKTOP GRID --------- */}
+        <div className="hidden md:grid md:grid-cols-[1fr,320px]">
+          {/* Texto izquierda */}
+          <div className="p-7 pr-16">
+            <h3 className="text-[26px] font-extrabold leading-snug" style={{color:'#8e240c'}}>
               Tu pedido se quedó a medio antojo 🍓
             </h3>
-            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
+            <div className="my-3 h-[3px] w-16 rounded-full"
                  style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
-            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
-              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito.
-              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            <p className="text-[16px] text-[#4e3427] leading-relaxed">
+              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
-
-            {/* Botones desktop (alineados con el texto) */}
-            <div className="mt-5 hidden md:flex items-center gap-3">
+            <div className="mt-5 flex items-center gap-3">
               <button
                 onClick={onGotoCart}
                 className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
@@ -210,8 +254,8 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* Video (derecha desktop / al medio mobile) */}
-          <div className="px-5 pb-2 md:px-7 md:py-7">
+          {/* Video derecha */}
+          <div className="px-7 py-7">
             <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
                  style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
               <video
@@ -224,24 +268,6 @@ function ReminderModal({open,count,onClose,onGotoCart}){
                 style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
               />
             </div>
-          </div>
-
-          {/* Botones mobile (debajo de la imagen) */}
-          <div className="px-5 pb-6 md:hidden flex flex-col gap-3">
-            <button
-              onClick={onGotoCart}
-              className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
-              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}
-            >
-              Ir al carrito
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full rounded-full px-5 h-12 font-semibold"
-              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}
-            >
-              Seguir comprando
-            </button>
           </div>
         </div>
       </div>
@@ -329,7 +355,7 @@ function App(){
     try {
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
       const cartHasItems = Array.isArray(cart) && cart.length > 0;
-      if (cartHasItems) return; // no mostrar si hay carrito pendiente
+      if (cartHasItems) return;
     } catch(e){}
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
