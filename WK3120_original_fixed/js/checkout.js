@@ -1,319 +1,33 @@
 /* global React, ReactDOM */
-const {useState,useEffect,useRef} = React;
+const {useState,useMemo,useEffect}=React;
 
-// ======= CHECKOUT COMPLETO =======
 const LOGO="assets/logo.png";
-const QR="assets/yape-qr.png";
-const YAPE="957285316";
-const NOMBRE_TITULAR="Kevin R. Pedraza D.";
-const WHA="51957285316";
-const DELIVERY=7;
+const WELCOME_VIDEO="assets/welcome.mp4";
+const WELCOME_POSTER="assets/welcome-poster.jpg";
 
-/* ===================== CLOUDINARY (unsigned) ===================== */
-const CLOUDINARY_CLOUD = "dw35nct1h";
-const CLOUDINARY_PRESET = "wk-payments";
-const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
+/* === Nuevo: recordatorio de carrito === */
+const REMINDER_VIDEO="assets/aviso.mp4";
+const REMINDER_POSTER="assets/aviso-poster.jpg";
 
-/* ============ (Se mantiene) WebApp de Google Sheets ============== */
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
-
-const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
-function toast(m){
-  const t = document.getElementById("toast");
-  if(!t) return;
-  t.textContent=m; t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),1400);
-}
-
-async function copyText(text,setCopied){
-  try{ await navigator.clipboard.writeText(text); setCopied(true); }
-  catch(e){
-    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
-    try{ document.execCommand('copy'); setCopied(true);}catch(_){}
-    document.body.removeChild(ta);
-  }
-  setTimeout(()=>setCopied(false),1600);
-}
-
-function HeaderMini({onSeguir}){
-  return (
-    <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
-      <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
-        <div className="flex items-center gap-3">
-          <img src={LOGO} className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain" />
-          <div className="leading-4">
-            <h1 className="font-extrabold text-base">Waffle King</h1>
-            <p className="text-xs text-slate-700">Confirmación y pago</p>
-          </div>
-          <div className="ml-auto">
-            {/* fondo crema + texto negro */}
-            <button
-              onClick={onSeguir}
-              className="btn-pill border"
-              style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
-            >
-              Seguir comprando
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-/* ===== Validador de entrega ===== */
-function validateDelivery(s){
-  const errs = {};
-  if(!s.nombre?.trim()) errs.nombre = "Ingresa tu nombre";
-  if(!/^\d{9}$/.test((s.telefono||"").trim())) errs.telefono = "Número de 9 dígitos";
-  if(!s.distrito?.trim()) errs.distrito = "Selecciona distrito";
-  if(!s.direccion?.trim()) errs.direccion = "Ingresa dirección";
-  if(!s.fecha?.trim()) errs.fecha = "Selecciona fecha";
-  if(!s.hora?.trim()) errs.hora = "Selecciona hora";
-  return errs;
-}
-
-function PhoneInput({value,onChange,error}){
-  const [val,setVal]=useState((value||"").replace(/\D/g,"").slice(-9));
-  useEffect(()=>{ setVal((value||"").replace(/\D/g,"").slice(-9)); },[value]);
-  function handle(e){
-    const digits = e.target.value.replace(/\D/g,"").slice(0,9);
-    setVal(digits);
-    onChange(digits);
-  }
-  const preview = val.length===9 ? `+51 ${val.slice(0,3)} ${val.slice(3,6)} ${val.slice(6)}` : "";
-  return (
-    <div>
-      <label className="text-sm font-medium">Teléfono</label>
-      <input
-        value={val}
-        onChange={handle}
-        inputMode="numeric"
-        placeholder="9xxxxxxxx"
-        aria-invalid={!!error}
-        className={
-          "mt-1 w-full rounded-lg border p-2 " +
-          (error ? "border-[#b32b11]" : "border-slate-300")
-        }
-      />
-      {preview && <div className="text-xs text-slate-500 mt-1">Formato: {preview}</div>}
-    </div>
-  );
-}
-
-const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
-
-function DatosEntrega({state,setState, errors={}}){
-  const storeKey='wk_delivery';
-  const [hydrated,setHydrated]=useState(false);
-  useEffect(()=>{
-    try{
-      const raw=localStorage.getItem(storeKey);
-      if(raw){ const data=JSON.parse(raw); setState(s=>({...s, ...data})); }
-    }catch(e){}
-    setHydrated(true);
-  },[]);
-  useEffect(()=>{
-    if(!hydrated) return;
-    try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
-  },[state, hydrated]);
-
-  const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
-  const set=(k,v)=>setState(s=>({...s,[k]:v}));
-
-  function getPos(opts){
-    return new Promise((resolve, reject)=>{ navigator.geolocation.getCurrentPosition(resolve, reject, opts); });
-  }
-  async function obtenerPosicionRobusta(){
-    try{ return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
-    catch(e){ if(e && e.code===3){ return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } throw e; }
-  }
-
-  const handleUbicacion = async () => {
-    if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
-    toast('Obteniendo ubicación…');
-    try{
-      const { coords } = await obtenerPosicionRobusta();
-      const lat = coords.latitude, lng = coords.longitude;
-      const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
-
-      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      try{
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-        const res = await fetch(url, { headers: { 'Accept':'application/json' } });
-        const data = await res.json();
-        if(data){
-          if (data.address){
-            const a = data.address;
-            const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-            const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
-            const ciudad = (a.city || a.town || a.village || a.county || '').trim();
-            const region = (a.state || '').trim();
-            const cp     = (a.postcode || '').trim();
-            const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
-            if (partes.length) finalDireccion = partes.join(', ');
-          }
-          if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
-        }
-      }catch(_){}
-
-      set('direccion', finalDireccion);
-      set('mapLink', mapsURL);
-      toast('Ubicación detectada ✓');
-    }catch(err){
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (err && err.code === 1) {
-        toast(isIOS
-          ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
-          : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
-      } else if (err && err.code === 2) {
-        toast('Posición no disponible. Activa GPS o prueba en exterior.');
-      } else if (err && err.code === 3) {
-        toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
-      } else {
-        toast('Error de ubicación. Intenta de nuevo.');
-      }
-    }
-  };
-
-  return (
-    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        {/* subtítulo rojo vino + bold */}
-        <h3 className="font-bold text-[#b32b11] mb-2">Datos de entrega</h3>
-        <div className="space-y-2">
-          {/* Nombre */}
-          <div id="field-nombre">
-            <label className="text-sm font-medium">Nombre</label>
-            <input
-              value={nombre||""}
-              onChange={e=>set('nombre',e.target.value)}
-              placeholder="Tu nombre"
-              aria-invalid={!!errors.nombre}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.nombre ? "border-[#b32b11]" : "border-slate-300")}
-            />
-            {errors.nombre && <div className="text-xs text-[#b32b11] mt-1">{errors.nombre}</div>}
-          </div>
-
-          {/* Teléfono */}
-          <div id="field-telefono">
-            <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)} error={errors.telefono}/>
-            {errors.telefono && <div className="text-xs text-[#b32b11] mt-1">{errors.telefono}</div>}
-          </div>
-
-          {/* Dirección + Mi ubicación */}
-          <div id="field-direccion">
-            <label className="text-sm font-medium">Dirección</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                value={direccion||""}
-                onChange={e=>set('direccion',e.target.value)}
-                placeholder="Calle 123, Mz Lt"
-                aria-invalid={!!errors.direccion}
-                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[#b32b11]" : "border-slate-300")}
-              />
-              <button
-                type="button"
-                onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm"
-                title="Usar mi ubicación actual"
-                style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
-              >
-                📍 Mi ubicación
-              </button>
-            </div>
-            {errors.direccion && <div className="text-xs text-[#b32b11] mt-1">{errors.direccion}</div>}
-          </div>
-
-          {/* Distrito */}
-          <div id="field-distrito">
-            <label className="text-sm font-medium">Distrito</label>
-            <select
-              value={distrito||""}
-              onChange={e=>set('distrito',e.target.value)}
-              aria-invalid={!!errors.distrito}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[#b32b11]" : "border-slate-300")}
-            >
-              <option value="">Selecciona distrito</option>
-              {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
-            </select>
-            {errors.distrito && <div className="text-xs text-[#b32b11] mt-1">{errors.distrito}</div>}
-          </div>
-
-          {/* Referencia (opcional) */}
-          <div>
-            <label className="text-sm font-medium">Referencia</label>
-            <input
-              value={referencia||""}
-              onChange={e=>set('referencia',e.target.value)}
-              placeholder="Frente a parque / tienda / etc."
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-            />
-          </div>
-
-          {/* Link Maps (opcional) */}
-          <div>
-            <label className="text-sm font-medium">Link de Google Maps (opcional)</label>
-            <input
-              value={mapLink||""}
-              onChange={e=>set('mapLink',e.target.value)}
-              placeholder="Pega tu link"
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-            />
-          </div>
-
-          {/* Fecha y Hora */}
-          <div className="grid grid-cols-2 gap-2">
-            <div id="field-fecha">
-              <label className="text-sm font-medium">Fecha de entrega</label>
-              <input
-                type="date"
-                value={fecha||""}
-                onChange={e=>set('fecha',e.target.value)}
-                aria-invalid={!!errors.fecha}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[#b32b11]" : "border-slate-300")}
-              />
-              {errors.fecha && <div className="text-xs text-[#b32b11] mt-1">{errors.fecha}</div>}
-            </div>
-            <div id="field-hora">
-              <label className="text-sm font-medium">Hora</label>
-              <input
-                type="time"
-                value={hora||""}
-                onChange={e=>set('hora',e.target.value)}
-                aria-invalid={!!errors.hora}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[#b32b11]" : "border-slate-300")}
-              />
-              {errors.hora && <div className="text-xs text-[#b32b11] mt-1">{errors.hora}</div>}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ====== PACKS del editor: 2 presentaciones (25 / 45) ====== */
-const PACKS=[
-  {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
-  {id:"king",   name:"Waffle King (2 pisos)",  base:45,incTop:4,incSir:3},
+/* ============ Packs (con imagen referencial) ============ */
+const PACKS = [
+  { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria", img:"assets/ref-special.jpg" },
+  { id:"king",    name:"Waffle King (2 pisos)",    price:45, incTop:4, incSir:3, desc:"Incluye 4 toppings + 3 siropes + dedicatoria", img:"assets/ref-king.jpg" },
 ];
 
-/* ====== MASAS (para editor + WhatsApp) ====== */
 const MASAS = [
-  { id:"clasica",  name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness",  name:"Premium (avena)",            delta:5 }, // ← renombrado
+  { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
+  { id:"fitness", name:"Premium (avena)",           delta:5 },
 ];
 
-/* ====== LISTAS (actualizadas) ====== */
 const TOPS = [
-  { id:"t-fresa",     name:"Fresa" },
-  { id:"t-platano",   name:"Plátano" },
-  { id:"t-oreo",      name:"Oreo" },
-  { id:"t-sublime",   name:"Sublime" },
-  { id:"t-princesa",  name:"Princesa" },
-  { id:"t-cua",       name:"Cua Cua" },
-  { id:"t-obsesion",  name:"Obsesión" },
+  { id:"t-fresa", name:"Fresa" },
+  { id:"t-platano", name:"Plátano" },
+  { id:"t-oreo", name:"Oreo" },
+  { id:"t-sublime", name:"Sublime" },
+  { id:"t-princesa", name:"Princesa" },
+  { id:"t-cua", name:"Cua Cua" },
+  { id:"t-obsesion", name:"Obsesión" },
 ];
 
 const SIROPES=[
@@ -332,735 +46,540 @@ const PREMIUM=[
   {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
-function EditModal({item, onClose, onSave}){
-  const baseItem = JSON.parse(JSON.stringify(item||{}));
+const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
+function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
-  const initialPackId = (PACKS.some(p=>p.id===baseItem.packId) ? baseItem.packId : PACKS[0].id);
-  const [packId,setPackId]=useState(initialPackId);
-  const pack = PACKS.find(p=>p.id===packId) || PACKS[0];
+function useCartCount(){
+  const getCount=()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0);
+  const [c,setC]=useState(getCount);
+  useEffect(()=>{
+    const on=()=>setC(getCount());
+    window.addEventListener("storage",on);
+    return()=>window.removeEventListener("storage",on)
+  },[]);
+  return[c,setC]
+}
 
-  const [masaId, setMasaId] = useState(baseItem.masaId || "clasica");
+/* ================= Modal de Bienvenida ================= */
+function WelcomeModal({open,onClose,onStart}){
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
 
-  const [qty,setQty]=useState(baseItem.qty||1);
-  const [tops,setTops]=useState(()=> (baseItem.toppings||[])
-    .map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
-  const [sirs,setSirs]=useState(()=> (baseItem.siropes||[])
-    .map(s=> (SIROPES.find(x=>x.name===s.name)||{}).id).filter(Boolean) );
-  const [prem,setPrem]=useState(()=>{
-    const m = Object.fromEntries(PREMIUM.map(p=>[p.id,0]));
-    (baseItem.premium||[]).forEach(p=>{ const id=(PREMIUM.find(x=>x.name===p.name)||{}).id; if(id) m[id]=p.qty; });
-    return m;
-  });
-  const [recipient,setRecipient]=useState(baseItem.recipient||"");
-  const [notes,setNotes]=useState(baseItem.notes||"");
-
-  function toggle(list,setter,limit,id){
-    setter(prev=> prev.includes(id) ? prev.filter(x=>x!==id) : (prev.length<limit?[...prev,id]:prev));
+  function closeWithAnim(cb){
+    setVisible(false);
+    setTimeout(()=>cb && cb(), 200);
   }
-  function setPremium(id,d){ setPrem(prev=>({...prev,[id]:Math.max(0,(+prev[id]||0)+d)})) }
+  if(!open) return null;
 
-  function save(){
-    const base = pack.base;
-    const sirsObjs = SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0}));
-    const extraSirs = sirsObjs.reduce((a,s)=>a+(s.extra||0),0);
-    const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
-    const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+         role="dialog" aria-modal="true" aria-labelledby="wk-welcome-title"
+         onClick={(e)=>{ if(e.target===e.currentTarget) closeWithAnim(onClose); }}
+         style={{background:'rgba(0,0,0,.45)'}}>
+      <div className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
+           style={{
+             borderColor:'#c28432',
+             width:'min(92vw, 560px)',
+             boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+             transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+             opacity: visible ? 1 : 0,
+             transition:'transform .2s ease, opacity .2s ease'
+           }}>
+        <button aria-label="Cerrar" onClick={()=>closeWithAnim(onClose)}
+                className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
+                style={{border:'2px solid #c28432',color:'#3a1104',background:'#fff',boxShadow:'0 6px 16px rgba(58,17,4,.22)'}}>×</button>
 
-    const masaDelta = (MASAS.find(m => m.id === masaId)?.delta || 0);
-    const masaName  = (MASAS.find(m => m.id === masaId)?.name  || "Clásica (harina de trigo)");
+        <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
+          <div className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
+               style={{borderColor:'#c28432',width:'200px',height:'240px',boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}>
+            <video src={WELCOME_VIDEO} poster={WELCOME_POSTER} autoPlay muted loop playsInline
+                   disablePictureInPicture controls={false}
+                   controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                   onContextMenu={(e)=>e.preventDefault()}
+                   className="w-full h-full object-contain bg-white"
+                   style={{ pointerEvents:'none', userSelect:'none' }}/>
+          </div>
 
-    const unit = base + extraSirs + extraPrem + masaDelta;
+          <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-3.5 md:pl-5 md:border-l md:border-amber-200">
+            <h2 id="wk-welcome-title"
+                className="font-extrabold text-2xl md:text-[28px] leading-tight tracking-tight text-center md:text-left"
+                style={{backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}>
+              ¡Gracias por unirte a la familia Waffle King!
+            </h2>
+            <div className="h-[3px] w-14 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <p className="text-sm md:text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
+            </p>
+            <button onClick={()=>closeWithAnim(onStart)}
+                    className="mt-0.5 inline-flex items-center justify-center rounded-full px-5 h-11 md:h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
+                    style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}>
+              Empezar pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-    const updated = {
-      ...baseItem,
-      name: pack.name,
-      packId: pack.id,
-      basePrice: base,
-      incTop: pack.incTop,
-      incSir: pack.incSir,
-      qty: Math.max(1, qty),
-      toppings: TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
-      siropes: sirsObjs,
-      premium: premObjs,
-      masaId, masaName, masaDelta,
-      unitPrice: unit,
-      recipient, notes
-    };
-    onSave(updated);
-  }
+/* ================= Modal Recordatorio (carrito pendiente) ================= */
+function ReminderModal({open,onClose,cartCount}){
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0);} },[open]);
+  if(!open) return null;
 
-  const limits={incTop:pack.incTop,incSir:pack.incSir};
+  const close=()=>{ setVisible(false); setTimeout(onClose,200); };
 
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+         role="dialog" aria-modal="true" aria-labelledby="wk-remind-title"
+         onClick={(e)=>{ if(e.target===e.currentTarget) close(); }}
+         style={{background:'rgba(0,0,0,.45)'}}>
+      <div className="relative bg-white rounded-2xl border-2 w-full max-w-[920px] overflow-hidden"
+           style={{
+             borderColor:'#c28432',
+             boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+             transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+             opacity: visible ? 1 : 0,
+             transition:'transform .2s ease, opacity .2s ease'
+           }}>
+        {/* Cerrar */}
+        <button aria-label="Cerrar" onClick={close}
+                className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center"
+                style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}>×</button>
+
+        {/* Contenido */}
+        <div className="grid md:grid-cols-[1fr,320px] gap-0">
+          {/* Texto (izquierda desktop / arriba y centrado en mobile) */}
+          <div className="p-5 md:p-7 order-1 md:order-none">
+            <h3 id="wk-remind-title"
+                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
+                style={{color:'#8e240c'}}>
+              Tu pedido se quedó a medio antojo 🍓
+            </h3>
+
+            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
+                 style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+
+            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Tienes <b style={{color:'#8e240c'}}>{cartCount}</b> waffle{cartCount>1?'s':''} esperando en tu carrito.
+              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            </p>
+
+            {/* En mobile, la imagen va en medio y estos botones van debajo */}
+            <div className="mt-5 hidden md:flex items-center gap-3">
+              <button
+                onClick={()=>location.href='checkout.html'}
+                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
+                style={{
+                  background:'linear-gradient(180deg,#3a1104,#2a0c02)',
+                  boxShadow:'0 10px 24px rgba(58,17,4,.22)'
+                }}>
+                Ir al carrito
+              </button>
+              <button
+                onClick={close}
+                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[180px]"
+                style={{
+                  background:'#fff0d6',
+                  border:'2px solid #c28432',
+                  color:'#111',
+                  boxShadow:'0 6px 16px rgba(58,17,4,.08)'
+                }}>
+                Seguir comprando
+              </button>
+            </div>
+          </div>
+
+          {/* Video (derecha desktop / en medio mobile) */}
+          <div className="order-2 md:order-none px-5 pb-5 md:px-7 md:py-7">
+            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
+                 style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
+              <video
+                src={REMINDER_VIDEO}
+                poster={REMINDER_POSTER}
+                autoPlay
+                muted
+                loop
+                playsInline
+                disablePictureInPicture
+                controls={false}
+                controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                onContextMenu={(e)=>e.preventDefault()}
+                className="w-full h-full object-contain bg-white"
+                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+              />
+            </div>
+          </div>
+
+          {/* Botones para mobile, debajo de la imagen */}
+          <div className="px-5 pb-6 md:hidden order-3 flex flex-col gap-3">
+            <button
+              onClick={()=>location.href='checkout.html'}
+              className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
+              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}>
+              Ir al carrito
+            </button>
+            <button
+              onClick={close}
+              className="w-full rounded-full px-5 h-12 font-semibold"
+              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}>
+              Seguir comprando
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ===================================================================== */
+
+function Header({count}){
+  return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
+    <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
+      <div className="flex items-center gap-3">
+        <img src={LOGO} className="h-10 w-10 rounded-xl ring-1 ring-amber-200 object-contain" alt="Waffle King"/>
+        <div className="leading-4">
+          <h1 className="font-extrabold text-lg">Waffle King</h1>
+          <p className="text-xs text-slate-700">Pedidos online — Lima Norte</p>
+        </div>
+        <button onClick={()=>location.href='checkout.html'} className="ml-auto relative rounded-full border border-amber-300 p-2 hover:bg-amber-50" aria-label="Ir al carrito">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6"><path fill="currentColor" d="M7 4h-2l-1 2h2l3.6 7.59l-1.35 2.45A1.99 1.99 0 0 0 10 19h9v-2h-9l1.1-2h7.45a2 2 0 0 0 1.79-1.11l3.58-6.49A1 1 0 0 0 23 5H6.21l-.94-2ZM7 20a2 2 0 1 0 4 0a2 2 0 0 0-4 0m8 0a 2 2 0 1 0 4 0a2 2 0 0 0-4 0"/></svg>
+          {count>0 && <span className="absolute -top-1 -right-1 bg-[#3a1104] text-white text-xs px-1.5 py-0.5 rounded-full">{count}</span>}
+        </button>
+      </div>
+      <div className="mt-2 w-full">
+        <div className="rounded-full border-2 border-[#c28432] bg-white text-black text-sm px-4 py-2">
+          Pedidos con <b>24h</b> de anticipación.
+        </div>
+      </div>
+    </div>
+  </header>);
+}
+
+function Pill({used,total,label}){
+  const ok=(used||0)<= (total||0);
+  return <div className={"text-xs px-2 py-1 rounded-full border "+(ok?"border-amber-200 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-700")}>{label}: {used||0}/{total||0} incl.</div>;
+}
+
+function Block({title,children,extra}){
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-bold text-[#b32b11]">{title}</h3>
+        {extra}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ===== Modal de imagen referencial ===== */
+function ImagePreview({src,title,onClose}){
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()}>
         <div className="px-5 py-3 border-b flex items-center justify-between">
-          <div className="font-semibold">Editar pedido</div>
-          <button className="btn-pill border" onClick={onClose}>Cerrar</button>
+          <div className="font-semibold">{title}</div>
+          <button className="btn-pill border focus:outline-none" onClick={onClose}>Cerrar</button>
         </div>
-
-        <div className="p-5 overflow-y-auto space-y-4">
-          {/* PACKS (activo: borde dorado #c28432 + fondo blanco) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {PACKS.map(p=>(
-              <button key={p.id} onClick={()=>{
-                  setPackId(p.id);
-                  setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
-                  setMasaId("clasica");
-                }}
-                className={
-                  "text-left rounded-xl border p-3 " +
-                  (p.id===packId ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
-                }>
-                <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-slate-600">Incluye {p.incTop} toppings + {p.incSir} siropes</div>
-              </button>
-            ))}
-          </div>
-
-          {/* TIPO DE MASA (activo igual que arriba) */}
-          <div>
-            <div className="text-sm font-medium mb-1">Tipo de masa</div>
-            <div className="grid sm:grid-cols-2 gap-2">
-              {MASAS.map(m => {
-                const active = masaId === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={()=> setMasaId(m.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
-                    }
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{m.name}</span>
-                      {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* CANTIDAD */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Cantidad</span>
-            <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
-            <span className="w-10 text-center">{qty}</span>
-            <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>q+1)}>+</button>
-          </div>
-
-          {/* TOPPINGS */}
-          <div>
-            <div className="text-sm font-medium mb-1">Toppings ({(tops||[]).length}/{limits.incTop} incl.)</div>
-            <div className="grid sm:grid-cols-2 gap-2">
-              {TOPS.map(t=>{
-                const active=tops.includes(t.id); const dis=!active && (tops.length>=limits.incTop);
-                return (
-                  <button key={t.id} onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
-                      (dis ? " opacity-50 cursor-not-allowed" : "")
-                    }>
-                    <div className="flex items-center justify-between">
-                      <span>{t.name}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* SIROPES */}
-          <div>
-            <div className="text-sm font-medium mb-1">Siropes ({(sirs||[]).length}/{limits.incSir} incl.)</div>
-            <div className="grid sm:grid-cols-2 gap-2">
-              {SIROPES.map(s=>{
-                const active=sirs.includes(s.id); const dis=!active && (sirs.length>=limits.incSir);
-                return (
-                  <button key={s.id} onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
-                      (dis ? " opacity-50 cursor-not-allowed" : "")
-                    }>
-                    <div className="flex items-center justify-between">
-                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* PREMIUM */}
-          <div>
-            <div className="text-sm font-medium">Toppings Premium</div>
-            <div className="grid md:grid-cols-2 gap-2">
-              {PREMIUM.map(p=>(
-                <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-slate-600">+ S/ {p.price.toFixed(2)} c/u</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,1)}>+</button>
-                      <span className="w-8 text-center">{prem[p.id]||0}</span>
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* DEDICATORIA */}
-          <div>
-            <div className="text-sm font-medium">Dedicatoria (opcional)</div>
-            <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Para Mackey..." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-2 w-full rounded-lg border border-slate-300 p-2" rows="2" placeholder="Mensaje / dedicatoria"></textarea>
-            <div className="text-xs text-slate-500">{notes.length}/180</div>
-          </div>
-        </div>
-
-        <div className="px-5 py-3 border-t bg-white sticky bottom-0 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="btn-pill border">Cancelar</button>
-          <button onClick={save} className="btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Guardar cambios</button>
-        </div>
+        <img src={src} alt={title} className="w-full h-auto object-cover"
+             onError={(e)=>{e.target.style.display='none'; toast('No se encontró la imagen');}}/>
       </div>
     </div>
   );
 }
 
-function CartList({cart, setCart, canCalc}){
-  const [openAll,setOpenAll]=useState(true);
-  const [editIdx,setEditIdx]=useState(null);
-
-  const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
-
-  function remove(i){ setCart(cart.filter((_,idx)=>idx!==i)); }
-  function onSave(updated){ setCart(list=> list.map((it,idx)=> idx===editIdx ? updated : it )); setEditIdx(null); }
-
-  return (
-    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        <div className="flex items-center justify-between mb-2">
-          {/* subtítulo rojo vino + bold */}
-          <h3 className="font-bold text-[#b32b11]">Resumen de tu compra</h3>
-          {cart.length>0 && <button className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
-            {openAll?"Ocultar detalle":"Mostrar detalle"}
-          </button>}
-        </div>
-
-        {cart.length===0 ? <p className="text-sm text-slate-600">Tu carrito está vacío.</p> :
-          <ul className="space-y-3">{cart.map((it,i)=>(
-            <li key={i} className="rounded-xl border border-slate-200 p-3 bg-white">
-              <div className="sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
-                <div className="flex items-center justify-between sm:block sm:col-span-8">
-                  <div className="font-semibold text-sm">{it.name} <span className="text-slate-500">× {it.qty}</span></div>
-                  <div className="text-sm sm:hidden">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                </div>
-                <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
-                <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
-                  <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
-                  <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
-                </div>
-              </div>
-
-              {openAll && (
-                <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
-                  {/* Masa */}
-                  <div className="sm:col-span-3">
-                    <div className="font-semibold">Masa</div>
-                    <div>{
-                      (() => {
-                        const fallback = "Clásica (harina de trigo)";
-                        if (it.masaName) return it.masaName;
-                        if (it.masaId) return (MASAS.find(m => m.id === it.masaId)?.name || fallback);
-                        return fallback;
-                      })()
-                    }</div>
-                  </div>
-
-                  <div><div className="font-semibold">Toppings</div><div>{(it.toppings&&it.toppings.length)?it.toppings.join(", "):"—"}</div></div>
-                  <div><div className="font-semibold">Siropes</div><div>{(it.siropes&&it.siropes.length)?it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "):"—"}</div></div>
-                  <div><div className="font-semibold">Premium</div><div>{(it.premium&&it.premium.length)?it.premium.map(p=>`${p.name} x${p.qty}`).join(", "):"—"}</div></div>
-                  <div className="sm:col-span-3">
-                    <div className="font-semibold">Dedicatoria</div>
-                    <div>{it.recipient ? ("Para: "+it.recipient) : "—"}</div>
-                    {it.notes && <div className="mt-0.5">{it.notes}</div>}
-                  </div>
-                </div>
-              )}
-            </li>
-          ))}</ul>
-        }
-
-        <div className="mt-3 text-right text-sm">Subtotal: <b>{soles(subtotal)}</b></div>
-        {cart.length>0 && (canCalc
-          ? (<>
-               <div className="text-right text-sm">Delivery: <b>{soles(DELIVERY)}</b></div>
-               <div className="text-right font-bold">Total: {soles(total)}</div>
-             </>)
-          : (<div className="text-right text-xs text-slate-600">Completa los datos de entrega para calcular el total con delivery.</div>)
-        )}
-      </div>
-
-      {editIdx!==null && <EditModal item={cart[editIdx]} onClose={()=>setEditIdx(null)} onSave={onSave}/>}
-    </section>
-  );
-}
-
-/* ================= PAYMENT BOX ================= */
-function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPreview, voucherErr}){
-  const [open,setOpen]=useState(false);
-  const [copied,setCopied]=useState(false);
-  const [error,setError]=useState("");
-  const fileRef=useRef(null);
-
-  const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
-
-  function validarArchivo(f){
-    if(!f) return "Selecciona una imagen.";
-    if(!f.type.startsWith("image/")) return "El archivo debe ser una imagen.";
-    if(f.size > 10*1024*1024) return "Máximo 10MB.";
-    return "";
-  }
-
-  function abrirPicker(){ fileRef.current?.click(); }
-
-  function limpiarVoucher(){
-    onVoucherClear?.();
-    setError("");
-    if (fileRef.current) fileRef.current.value="";
-  }
-
-  async function handleChange(e){
-    const f=e.target.files?.[0];
-    if(!f) return;
-    const msg=validarArchivo(f);
-    if(msg){ setError(msg); e.target.value=""; return; }
-    setError("");
-    try{
-      const objURL=URL.createObjectURL(f);
-      onVoucherSelect?.(f, objURL);
-    }catch(_){}
-  }
-
-  const Logos = (
-    <div className="payment-logos flex items-center gap-2">
-      <img
-        src="assets/yape.png"
-        alt=""
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
-          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="assets/yape.jpg"; }
-          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/yape.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
-      <img
-        src="assets/plin.png"
-        alt=""
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
-          else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="../assets/plin.png"; }
-          else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/plin.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
-    </div>
-  );
-
-  return (
-    <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {Logos}
-            {/* subtítulo rojo vino + bold */}
-            <h4 className="font-bold text-[#b32b11]">Forma de pago</h4>
-          </div>
-
-          <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
-            <button
-              onClick={()=>copyText(YAPE,setCopied)}
-              className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}
-            >
-              {copied ? "¡Número copiado!" : "Copiar número"}
-            </button>
-            <button
-              onClick={()=>setOpen(true)}
-              className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition"
-            >
-              Ver QR
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 text-sm leading-6 text-slate-700">
-          <div><span className="font-medium">Número Yape/Plin:</span> {fmt}</div>
-          <div><span className="font-medium">Nombre:</span> {NOMBRE_TITULAR}</div>
-          {canCalc && <div className="mt-1"><span className="mr-1">Total a pagar</span><span className="font-bold">{soles(total)}</span></div>}
-        </div>
-
-        <div className="mt-3" id="voucher-area">
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
-
-          {!voucherPreview ? (
-            /* "Subir voucher" rojo vino + blanco en negrita */
-            <button
-              onClick={abrirPicker}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
-              style={{ backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
-              Subir voucher
-            </button>
-          ) : (
-            <div className="flex items-start gap-3">
-              <a href={voucherPreview} target="_blank" rel="noreferrer"
-                 className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
-                <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
-              </a>
-              <div className="flex flex-col gap-2">
-                <div className="text-xs text-amber-900">Voucher seleccionado</div>
-                <div className="flex gap-2">
-                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
-                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
-                </div>
-                <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
-              </div>
-            </div>
-          )}
-
-          {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
-          {voucherErr && <div className="text-xs text-[#b32b11] mt-2">{voucherErr}</div>}
-        </div>
-      </div>
-
-      {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
-          <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
-            <div className="text-center font-semibold mb-3">QR de Yape</div>
-            <img src={QR} className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
-            <button onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-/* ===================== WhatsApp message builder ===================== */
-
-function buildWhatsApp(cart,state,total, voucherUrl=""){
-  const L=[];
-  if(cart.length===0){ return null; }
-  const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
-  if(!nombre || !telefono || telefono.length!==9 || !distrito || !direccion){ return false; }
-
-  const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
-  const mapsAuto = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
-  const mapsURL = (mapLink && mapLink.trim().length>0) ? mapLink.trim() : mapsAuto;
-
-  const telFmt = `+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
-
-  L.push("Waffle King — Pedido");
-  if(fecha||hora){L.push("");L.push(`Fecha de entrega: ${fecha||"-"}`);L.push(`Hora: ${hora||"-"}`)};L.push("");
-
-  cart.forEach((it,i)=>{
-    L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
-
-    const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
-    if(masa) L.push("   · Masa: " + masa);
-
-    if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
-    if(it.siropes?.length)L.push("   · Siropes: "+it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "));
-    if(it.premium?.length)L.push("   · Premium: "+it.premium.map(p=>`${p.name} x${p.qty}`).join(", "));
-    if(it.recipient || it.notes){
-      L.push("   · Dedicatoria: "+(it.recipient?`Para ${it.recipient}`:"")+(it.recipient&&it.notes?" — ":"")+(it.notes?it.notes:""));
-    }
-  });
-
-  L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
-  L.push(`Dirección: ${distrito} — ${direccion}`);
-  if(referencia) L.push("Referencia: "+referencia);
-  L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
-
-  const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
-  L.push("");
-  L.push("Datos de pago:");
-  L.push(`Waffle: ${soles(waffleSubtotal)}`);
-  L.push(`Delivery: ${soles(DELIVERY)}`);
-  L.push(`Total a pagar: ${soles(total)}`);
-  L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
-  L.push("");
-  L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*");
-  L.push("_Atte: Waffle King_");
-
-  return encodeURIComponent(L.join("\n"));
-}
-
-
-/* ==================== Helpers a Sheets (se mantienen) ==================== */
-function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
-  return {
-    orderId,
-    cliente: {
-      dni: state?.dni || 0,
-      nombre: state?.nombre || '',
-      telefono: state?.telefono || '',
-      distrito: state?.distrito || '',
-      direccion: state?.direccion || '',
-      referencia: state?.referencia || '',
-      mapLink: state?.mapLink || ''
-    },
-    programado: { fecha: state?.fecha || '', hora: state?.hora  || '' },
-    montos: { subtotal, delivery: DELIVERY, total },
-    pago: { metodo: 'Yape/Plin', numero: YAPE, titular: NOMBRE_TITULAR },
-    items: (cart || []).map(it => ({
-      name: it.name,
-      qty: Number(it.qty || 0),
-      unitPrice: Number(it.unitPrice || 0),
-      toppings: it.toppings || [],
-      siropes:  it.siropes  || [],
-      premium:  it.premium  || [],
-      recipient: it.recipient || '',
-      notes: it.notes || ''
-    })),
-    whatsAppText
-  };
-}
-
-async function registrarPedidoGSheet(payload) {
-  try {
-    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
-    const data = JSON.stringify(payload);
-    if (navigator.sendBeacon) { const ok = navigator.sendBeacon(url, data); if (ok) return true; }
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: 'payload=' + encodeURIComponent(data)
-    });
-    return true;
-  } catch (_e) {
-    return false;
-  }
-}
-
-/* ================== APP (con validación guiada) ================== */
 function App(){
-  const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
-  const [state,setState]=useState({
-    nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",
-    direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",
-    fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
-  });
+  useEffect(()=>{try{if(localStorage.getItem('wk_clear_delivery')==='1'){localStorage.removeItem('wk_delivery');localStorage.removeItem('wk_clear_delivery');}}catch(e){}},[]);
 
-  // errores formulario + voucher
-  const [errors, setErrors] = useState({});
-  const [voucherErr, setVoucherErr] = useState("");
+  const [packId,setPack]=useState(null);
+  const pack=useMemo(()=>PACKS.find(p=>p.id===packId),[packId]);
+  const [tops,setTops]=useState([]);
+  const [masaId, setMasaId] = useState(null);
+  const [sirs,setSirs]=useState([]);
+  const [prem,setPrem]=useState(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
+  const [notes,setNotes]=useState("");
+  const [rec,setRec]=useState("");
+  const [count,setCount]=useCartCount();
+  const [qty,setQty]=useState(1);
+  const locked=!pack;
 
-  function safeParse(json){ try{ return JSON.parse(json); }catch(_){ return null; } }
-  function normalizeCart(x){ return Array.isArray(x)?x:[]; }
-  function multiRead(){
-    const candidates = [
-      localStorage.getItem("wk_cart"),
-      localStorage.getItem("wk_cart_bkp"),
-      sessionStorage.getItem("wk_cart"),
-      localStorage.getItem("cart"),
-      localStorage.getItem("carrito"),
-      localStorage.getItem("shopping_cart"),
-    ].map(safeParse).filter(Boolean);
+  const [preview,setPreview]=useState(null);
 
-    if (location.hash && location.hash.length>1){
-      try{
-        const hash = decodeURIComponent(atob(location.hash.slice(1)));
-        const parsed = JSON.parse(hash);
-        if (Array.isArray(parsed)) candidates.unshift(parsed);
-      }catch(_){}
-    }
-    for(const c of candidates){ if (Array.isArray(c) && c.length) return c; }
-    for(const c of candidates){ if (Array.isArray(c)) return c; }
-    return [];
-  }
-
-  const [cart,setCart]=useState(()=> normalizeCart(multiRead()));
+  // Welcome: mostrar una vez por sesión, pero NO si hay carrito pendiente
+  const [welcomeOpen,setWelcomeOpen]=useState(false);
+  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada)
+  const [reminderOpen,setReminderOpen]=useState(false);
+  const [reminderCount,setReminderCount]=useState(0);
 
   useEffect(()=>{
-    if (cart && cart.length>0) return;
-    let tries=0;
-    const timer = setInterval(()=>{
-      tries++;
-      const c = normalizeCart(multiRead());
-      if (c.length>0){
-        setCart(c);
-        clearInterval(timer);
+    try {
+      const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
+      const items = Array.isArray(cart) ? cart.reduce((a,b)=>a+(+b.qty||0),0) : 0;
+      setReminderCount(items);
+      if(items>0){
+        setReminderOpen(true);
+        return; // no bienvenida si hay recordatorio
       }
-      if (tries>=10){
-        clearInterval(timer);
-        if (location.protocol==='file:'){
-          toast('Abre con http:// (no file://) para compartir el carrito');
-        }
-      }
-    },300);
-    return ()=>clearInterval(timer);
+    } catch(e){}
+    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
+    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
   useEffect(()=>{
-    try{
-      const json = JSON.stringify(cart||[]);
-      localStorage.setItem("wk_cart", json);
-      localStorage.setItem("wk_cart_bkp", json);
-      sessionStorage.setItem("wk_cart", json);
-    }catch(_){}
-  },[cart]);
+    setTops([]);setSirs([]);setQty(1);setMasaId(null);
+    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
+    setNotes(""); setRec("");
+  },[packId]);
 
-  // Voucher
-  const [voucherFile, setVoucherFile] = useState(null);
-  const [voucherPreview, setVoucherPreview] = useState("");
+  const sirsExtra=locked?0:sirs.reduce((a,id)=>a+(SIROPES.find(s=>s.id===id)?.extra||0),0);
+  const premCost=locked?0:Object.entries(prem).reduce((a,[id,q])=>a+(PREMIUM.find(p=>p.id===id)?.price||0)*(+q||0),0);
+  const masaDelta = masaId ? (MASAS.find(m => m.id === masaId)?.delta || 0) : 0;
+  const unit = locked ? 0 : ((pack?.price || 0) + masaDelta + sirsExtra + premCost);
+  const total=locked?0:(unit*qty);
 
-  useEffect(()=>{
-    const handler=()=>{ try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){} };
-    window.addEventListener('beforeunload', handler);
-    return ()=>window.removeEventListener('beforeunload', handler);
-  },[state]);
+  function requirePack(){ if(locked){ toast("Debes seleccionar un waffle para continuar"); return true; } return false; }
 
-  function seguirComprando(){
-    try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
-    location.href='index.html';
+  const ACTIVE_BOX =
+    "border-2 border-[#c28432] bg-[linear-gradient(180deg,rgba(194,132,50,0.06),rgba(194,132,50,0.10)),#ffffff]";
+  const FOCUS_OFF = "focus:outline-none focus:ring-0";
+
+  function toggle(list,setter,limit,id){
+    if(requirePack())return;
+    setter(prev=> prev.includes(id) ? prev.filter(x=>x!==id) : (prev.length<limit?[...prev,id]:prev));
+  }
+  function setPremium(id,d){ if(requirePack())return; setPrem(prev=>({...prev,[id]:Math.max(0,(+prev[id]||0)+d)})) }
+
+  function add(){
+    if(requirePack())return;
+    if (!masaId) {toast("Selecciona el tipo de masa"); return;}
+    if(qty<1){toast("Cantidad inválida");return;}
+    const item={
+      name:pack.name,packId:pack.id,basePrice:pack.price,incTop:pack.incTop,incSir:pack.incSir,
+      masaId, masaName: (MASAS.find(m => m.id === masaId)?.name || "Clásica (harina de trigo)"),masaDelta,
+      toppings:TOPS.filter(t=>tops.includes(t.id)).map(t=>t.name),
+      siropes:SIROPES.filter(s=>sirs.includes(s.id)).map(s=>({name:s.name,extra:s.extra||0})),
+      premium:PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]})),
+      recipient:rec, notes:notes, unitPrice:unit,qty:qty
+    };
+    const cart=JSON.parse(localStorage.getItem("wk_cart")||"[]");
+    cart.push(item);
+    localStorage.setItem("wk_cart",JSON.stringify(cart));
+    setPack(null); setTops([]); setSirs([]);
+    setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
+    setNotes(""); setRec("");
+    const newCount = cart.reduce((a,b)=>a+(+b.qty||0),0);
+    setCount(newCount);
+    toast("Agregado al carrito");
+
+    // Mostrar recordatorio en próximos ingresos
+    setReminderCount(newCount);
+
+    // ⬆️ Mover scroll al inicio tras agregar
+    setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 50);
   }
 
-  const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const canCalc = !!(state.distrito && state.direccion);
-  const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
+  return (<div>
+    {/* MODALES */}
+    <WelcomeModal
+      open={welcomeOpen}
+      onClose={()=>setWelcomeOpen(false)}
+      onStart={()=>{ setWelcomeOpen(false); setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10); }}
+    />
+    <ReminderModal
+      open={reminderOpen}
+      onClose={()=>setReminderOpen(false)}
+      cartCount={reminderCount || count}
+    />
 
-  function onVoucherSelect(file, previewUrl){ setVoucherFile(file); setVoucherPreview(previewUrl || ""); setVoucherErr(""); }
-  function onVoucherClear(){ setVoucherFile(null); setVoucherPreview(""); }
+    <Header count={count}/>
+    <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-  async function subirVoucherAhora(file){
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", CLOUDINARY_PRESET);
-    fd.append("folder", "wk3120/payments");
-    fd.append("context", `app=wk3120|tipo=voucher|monto=S/${total}`);
-    const res = await fetch(CLOUDINARY_UPLOAD_URL, { method:"POST", body: fd });
-    const data = await res.json();
-    if(!data?.secure_url) throw new Error("No se pudo subir el voucher");
-    return data.secure_url;
-  }
+      {/* ============ PACKS ============ */}
+      <Block title="Elige tu waffle">
+        <div id="packs-start" />
+        <div className="grid md:grid-cols-2 gap-3">
+          {PACKS.map(p=>(
+            <button
+              key={p.id}
+              onClick={()=>setPack(p.id)}
+              className={
+                "text-left rounded-2xl border p-4 w-full "+ FOCUS_OFF +" "+
+                (p.id===packId ? ACTIVE_BOX : "border-slate-200 bg-white/80 hover:bg-white")
+              }
+              aria-label={`Elegir ${p.name}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className={p.id===packId ? "font-bold" : "font-medium"}>{p.name}</h4>
+                  <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
+                  <button
+                    onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
+                    className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 "+FOCUS_OFF}
+                    aria-label={`Ver imagen referencial de ${p.name}`}
+                    title="Foto referencial"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-3.5 w-3.5">
+                      <path fill="currentColor" d="M21 19V5H3v14h18ZM21 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h18ZM8 11l2.03 2.71l2.72-3.62L16 14h-8Z"/>
+                    </svg>
+                    <span>Foto referencial</span>
+                  </button>
+                </div>
+                <div className="flex items-center">
+                  <div className="font-bold whitespace-nowrap">{soles(p.price)}</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+        {!pack && <div className="mt-2 text-xs text-slate-600">Selecciona un waffle para desbloquear los siguientes pasos.</div>}
+      </Block>
 
-  // ====== ENVIAR (con validación guiada) ======
-  async function enviar(){
-    if(cart.length===0){ toast("Agrega al menos un producto"); return; }
+      {/* ============ MASA ============ */}
+      <Block title="Tipo de masa">
+        <div className={"grid sm:grid-cols-2 gap-2 " + (locked ? "opacity-60 pointer-events-none" : "")}>
+          {MASAS.map(m => {
+            const active = masaId === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={()=> setMasaId(m.id)}
+                className={
+                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
+                  (active ? ACTIVE_BOX : "border-slate-200 bg-white")
+                }
+                title={locked ? "Debes seleccionar un waffle para continuar" : ""}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={active ? "font-semibold" : ""}>{m.name}</span>
+                  {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Block>
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const preWin = !isMobile ? window.open('', '_blank') : null;
+      {/* ============ TOPPINGS ============ */}
+      <Block title="Toppings incluidos" extra={<Pill used={tops.length} total={pack?.incTop} label="Toppings"/>}>
+        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+          {TOPS.map(t=>{
+            const active=tops.includes(t.id);
+            const dis=!active && (tops.length>=(pack?.incTop||0));
+            return (
+              <button
+                key={t.id}
+                onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)}
+                className={
+                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
+                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
+                  (dis?" opacity-50 cursor-not-allowed":"")
+                }
+                title={locked?"Debes seleccionar un waffle para continuar":""}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={active ? "font-semibold" : ""}>{t.name}</span>
+                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Block>
 
-    let voucherUrl = "";
-    try{
-      voucherUrl = await subirVoucherAhora(voucherFile);
-    }catch(e){
-      toast("Error al subir el voucher. Intenta de nuevo.");
-      if (preWin && !preWin.closed) preWin.close();
-      return;
-    }
+      {/* ============ SIROPES ============ */}
+      <Block title="Siropes incluidos" extra={<Pill used={sirs.length} total={pack?.incSir} label="Siropes"/>}>
+        <div className={"grid sm:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+          {SIROPES.map(s=>{
+            const active=sirs.includes(s.id);
+            const dis=!active && (sirs.length>=(pack?.incSir||0));
+            return (
+              <button
+                key={s.id}
+                onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)}
+                className={
+                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
+                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
+                  (dis?" opacity-50 cursor-not-allowed":"")
+                }
+                title={locked?"Debes seleccionar un waffle para continuar":""}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={active ? "font-semibold" : ""}>
+                    {s.name}{s.extra?` (+${soles(s.extra)})`:""}
+                  </span>
+                  {active && <span className="text-xs text-[#3a1104]">✓</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate-600 mt-2">* Hersheys agrega S/ 2.00 al total aunque esté dentro del pack.</p>
+      </Block>
 
-    let effective = state;
-    try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
-    const text=buildWhatsApp(cart,effective,total,voucherUrl);
-    if(text===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
-    if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
+      {/* ============ PREMIUM ============ */}
+      <Block title="Toppings Premium (opcional)">
+        <div className={"grid md:grid-cols-2 gap-2 "+(locked?"opacity-60 pointer-events-none":"")}>
+          {PREMIUM.map(p=>(
+            <div key={p.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2" title={locked?"Debes seleccionar un waffle para continuar":""}>
+              <div className="flex items-center justify-between">
+                <div><div className="font-medium">{p.name}</div><div className="text-xs text-slate-600">+ {soles(p.price)} c/u</div></div>
+                <div className="flex items-center gap-2">
+                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,-1)}>−</button>
+                  <span className="w-8 text-center">{locked?0:(prem[p.id]||0)}</span>
+                  <button className={"px-2 py-1 rounded-full border "+FOCUS_OFF} onClick={()=>setPremium(p.id,1)}>+</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Block>
 
-    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
+      {/* ============ DEDICATORIA ============ */}
+      <Block title="Dedicatoria y destinatario">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div><label className="text-sm font-medium">Para (nombre)</label>
+            <input value={rec} onChange={e=>setRec(e.target.value.slice(0,60))} className="mt-1 w-full rounded-lg border border-slate-300 p-2 focus:outline-none" placeholder="Ej: Mackey"/></div>
+          <div className="sm:col-span-2"><label className="text-sm font-medium">Mensaje/Dedicatoria (opcional)</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-1 w-full rounded-lg border border-slate-300 p-3 focus:outline-none" rows="3" placeholder="Ej: Para Mackey con mucho amor. ¡Feliz cumple!"></textarea>
+            <div className="text-xs text-slate-500 mt-1">{notes.length}/180</div></div>
+        </div>
+      </Block>
 
-    try{
-      const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
-      const payload = buildOrderPayloadForSheets({
-        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
-      });
-      registrarPedidoGSheet(payload);
-    }catch(_e){}
+      {/* ============ FOOTER RESUMEN ============ */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="text-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">Total del waffle</span>
+            <span className="text-lg font-bold">{soles(total)}</span>
+            <span className="text-xs text-slate-600">{!pack?"(selecciona un waffle)":"("+soles(unit)+" c/u)"}</span>
+          </div>
+          <div className="text-xs text-slate-600">Base del pack + sirope(s) con extra + premium seleccionados.</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
+          <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
+          <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
 
-    if (isMobile) {
-      window.location.href = waWeb;
-    } else {
-      if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
-      else { window.open(waWeb, "_blank"); }
-    }
+          <button
+            onClick={add}
+            disabled={!pack}
+            className={"btn-pill text-white "+FOCUS_OFF+" "+(!pack?"btn-disabled":"hover:bg-[#2a0c02]")}
+            style={
+              !pack
+                ? { background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))', opacity:1, boxShadow:'0 6px 14px rgba(58,17,4,.18)' }
+                : { background:'#3a1104' }
+            }
+          >
+            Agregar al carrito
+          </button>
+        </div>
+      </div>
+    </main>
 
-    try{
-      localStorage.removeItem("wk_cart");
-      localStorage.removeItem("wk_delivery");
-      localStorage.setItem("wk_clear_delivery","1");
-      sessionStorage.removeItem("wk_cart");
-    }catch(e){}
-
-    setVoucherFile(null);
-    setVoucherPreview("");
-
-    setTimeout(()=>{ location.href='index.html'; }, 2000);
-  }
-
-  // Click del CTA: valida, marca errores, hace scroll y/o envía
-  function handleEnviarClick(){
-    const errs = validateDelivery(state);
-    const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
-
-    setErrors(errs);
-    setVoucherErr(vErr);
-
-    if (Object.keys(errs).length || vErr){
-      const order = ["nombre","telefono","direccion","distrito","fecha","hora"];
-      const first = order.find(k => errs[k]);
-      if(first){
-        const el = document.getElementById("field-"+first);
-        if(el){
-          el.scrollIntoView({behavior:"smooth", block:"center"});
-          const input = el.querySelector("input,select,textarea");
-          input?.focus?.();
-        }
-      }else{
-        document.getElementById("voucher-area")?.scrollIntoView({behavior:"smooth", block:"center"});
-      }
-      toast("Completar datos de entrega y subir voucher de pago");
-      return;
-    }
-    enviar();
-  }
-
-  return (
-    <div>
-      <HeaderMini onSeguir={seguirComprando}/>
-      <DatosEntrega state={state} setState={setState} errors={errors}/>
-      <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
-      <PaymentBox
-        total={total}
-        canCalc={canCalc}
-        onVoucherSelect={onVoucherSelect}
-        onVoucherClear={onVoucherClear}
-        voucherPreview={voucherPreview}
-        voucherErr={voucherErr}
-      />
-      <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* CTA SIEMPRE ACTIVO: rojo vino + blanco bold */}
-        <button
-          onClick={handleEnviarClick}
-          className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
-        >
-          Enviar pedido por WhatsApp
-        </button>
-      </section>
-    </div>
-  );
+    {/* Modal ver foto */}
+    {preview && <ImagePreview src={preview.src} title={preview.title} onClose={()=>setPreview(null)}/>}
+  </div>);
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
