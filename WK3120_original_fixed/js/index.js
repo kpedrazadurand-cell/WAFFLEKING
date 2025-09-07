@@ -5,6 +5,10 @@ const LOGO="assets/logo.png";
 const WELCOME_VIDEO="assets/welcome.mp4";
 const WELCOME_POSTER="assets/welcome-poster.jpg";
 
+/* === Nuevo: recordatorio de carrito === */
+const REMINDER_VIDEO="assets/aviso.mp4";
+const REMINDER_POSTER="assets/aviso-poster.jpg";
+
 /* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
   { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria", img:"assets/ref-special.jpg" },
@@ -13,7 +17,7 @@ const PACKS = [
 
 const MASAS = [
   { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness", name:"Fitness (avena)",           delta:5 },
+  { id:"fitness", name:"Premium (avena)",           delta:5 },
 ];
 
 const TOPS = [
@@ -46,16 +50,17 @@ const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
 function useCartCount(){
-  const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+  const getCount=()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0);
+  const [c,setC]=useState(getCount);
   useEffect(()=>{
-    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+    const on=()=>setC(getCount());
     window.addEventListener("storage",on);
     return()=>window.removeEventListener("storage",on)
   },[]);
   return[c,setC]
 }
 
-/* ================= Modal de Bienvenida (responsive fix) ================= */
+/* ================= Modal de Bienvenida ================= */
 function WelcomeModal({open,onClose,onStart}){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
@@ -67,88 +72,159 @@ function WelcomeModal({open,onClose,onStart}){
   if(!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="dialog" aria-modal="true" aria-labelledby="wk-welcome-title"
-      onClick={(e)=>{ if(e.target===e.currentTarget) closeWithAnim(onClose); }}
-      style={{background:'rgba(0,0,0,.45)'}}
-    >
-      <div
-        className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
-        style={{
-          borderColor:'#c28432',
-          width:'min(92vw, 560px)',
-          boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
-          transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
-          opacity: visible ? 1 : 0,
-          transition:'transform .2s ease, opacity .2s ease'
-        }}
-      >
-        {/* Cerrar */}
-        <button
-          aria-label="Cerrar"
-          onClick={()=>closeWithAnim(onClose)}
-          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
-          style={{
-            border:'2px solid #c28432',
-            color:'#3a1104', background:'#fff',
-            boxShadow:'0 6px 16px rgba(58,17,4,.22)'
-          }}
-        >×</button>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+         role="dialog" aria-modal="true" aria-labelledby="wk-welcome-title"
+         onClick={(e)=>{ if(e.target===e.currentTarget) closeWithAnim(onClose); }}
+         style={{background:'rgba(0,0,0,.45)'}}>
+      <div className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
+           style={{
+             borderColor:'#c28432',
+             width:'min(92vw, 560px)',
+             boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+             transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+             opacity: visible ? 1 : 0,
+             transition:'transform .2s ease, opacity .2s ease'
+           }}>
+        <button aria-label="Cerrar" onClick={()=>closeWithAnim(onClose)}
+                className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
+                style={{border:'2px solid #c28432',color:'#3a1104',background:'#fff',boxShadow:'0 6px 16px rgba(58,17,4,.22)'}}>×</button>
 
         <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
-          {/* IZQ: personaje */}
-          <div
-            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
-            style={{
-              borderColor:'#c28432',
-              width:'200px', height:'240px',
-              boxShadow:'0 8px 16px rgba(58,17,4,.06)'
-            }}
-          >
-            <video
-              src={WELCOME_VIDEO}
-              poster={WELCOME_POSTER}
-              autoPlay
-              muted
-              loop
-              playsInline
-              disablePictureInPicture
-              controls={false}
-              controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
-              onContextMenu={(e)=>e.preventDefault()}
-              className="w-full h-full object-contain bg-white"
-              style={{ pointerEvents:'none', userSelect:'none' }}
-            />
+          <div className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
+               style={{borderColor:'#c28432',width:'200px',height:'240px',boxShadow:'0 8px 16px rgba(58,17,4,.06)'}}>
+            <video src={WELCOME_VIDEO} poster={WELCOME_POSTER} autoPlay muted loop playsInline
+                   disablePictureInPicture controls={false}
+                   controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                   onContextMenu={(e)=>e.preventDefault()}
+                   className="w-full h-full object-contain bg-white"
+                   style={{ pointerEvents:'none', userSelect:'none' }}/>
           </div>
 
-          {/* DER: Texto + CTA */}
           <div className="flex flex-col items-center md:items-start justify-center gap-3 md:gap-3.5 md:pl-5 md:border-l md:border-amber-200">
-            <h2
-              id="wk-welcome-title"
-              className="font-extrabold text-2xl md:text-[28px] leading-tight tracking-tight text-center md:text-left"
-              style={{
-                backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',
-                WebkitBackgroundClip:'text',
-                backgroundClip:'text',
-                color:'transparent'
-              }}
-            >
+            <h2 id="wk-welcome-title"
+                className="font-extrabold text-2xl md:text-[28px] leading-tight tracking-tight text-center md:text-left"
+                style={{backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}>
               ¡Gracias por unirte a la familia Waffle King!
             </h2>
-
             <div className="h-[3px] w-14 rounded-full" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
-
             <p className="text-sm md:text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
               Aquí horneamos felicidad capa por capa. ¿List@ para crear tu waffle perfecto?
             </p>
-
-            <button
-              onClick={()=>closeWithAnim(onStart)}
-              className="mt-0.5 inline-flex items-center justify-center rounded-full px-5 h-11 md:h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
-              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
-            >
+            <button onClick={()=>closeWithAnim(onStart)}
+                    className="mt-0.5 inline-flex items-center justify-center rounded-full px-5 h-11 md:h-12 w-full md:w-[240px] font-bold text-white transition active:scale-[0.98]"
+                    style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}>
               Empezar pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================= Modal Recordatorio (carrito pendiente) ================= */
+function ReminderModal({open,onClose,cartCount}){
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0);} },[open]);
+  if(!open) return null;
+
+  const close=()=>{ setVisible(false); setTimeout(onClose,200); };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+         role="dialog" aria-modal="true" aria-labelledby="wk-remind-title"
+         onClick={(e)=>{ if(e.target===e.currentTarget) close(); }}
+         style={{background:'rgba(0,0,0,.45)'}}>
+      <div className="relative bg-white rounded-2xl border-2 w-full max-w-[920px] overflow-hidden"
+           style={{
+             borderColor:'#c28432',
+             boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+             transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+             opacity: visible ? 1 : 0,
+             transition:'transform .2s ease, opacity .2s ease'
+           }}>
+        {/* Cerrar */}
+        <button aria-label="Cerrar" onClick={close}
+                className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center"
+                style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}>×</button>
+
+        {/* Contenido */}
+        <div className="grid md:grid-cols-[1fr,320px] gap-0">
+          {/* Texto (izquierda desktop / arriba y centrado en mobile) */}
+          <div className="p-5 md:p-7 order-1 md:order-none">
+            <h3 id="wk-remind-title"
+                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
+                style={{color:'#8e240c'}}>
+              Tu pedido se quedó a medio antojo 🍓
+            </h3>
+
+            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
+                 style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+
+            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Tienes <b style={{color:'#8e240c'}}>{cartCount}</b> waffle{cartCount>1?'s':''} esperando en tu carrito.
+              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            </p>
+
+            {/* En mobile, la imagen va en medio y estos botones van debajo */}
+            <div className="mt-5 hidden md:flex items-center gap-3">
+              <button
+                onClick={()=>location.href='checkout.html'}
+                className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
+                style={{
+                  background:'linear-gradient(180deg,#3a1104,#2a0c02)',
+                  boxShadow:'0 10px 24px rgba(58,17,4,.22)'
+                }}>
+                Ir al carrito
+              </button>
+              <button
+                onClick={close}
+                className="rounded-full px-5 h-11 font-semibold whitespace-nowrap min-w-[180px]"
+                style={{
+                  background:'#fff0d6',
+                  border:'2px solid #c28432',
+                  color:'#111',
+                  boxShadow:'0 6px 16px rgba(58,17,4,.08)'
+                }}>
+                Seguir comprando
+              </button>
+            </div>
+          </div>
+
+          {/* Video (derecha desktop / en medio mobile) */}
+          <div className="order-2 md:order-none px-5 pb-5 md:px-7 md:py-7">
+            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
+                 style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
+              <video
+                src={REMINDER_VIDEO}
+                poster={REMINDER_POSTER}
+                autoPlay
+                muted
+                loop
+                playsInline
+                disablePictureInPicture
+                controls={false}
+                controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                onContextMenu={(e)=>e.preventDefault()}
+                className="w-full h-full object-contain bg-white"
+                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+              />
+            </div>
+          </div>
+
+          {/* Botones para mobile, debajo de la imagen */}
+          <div className="px-5 pb-6 md:hidden order-3 flex flex-col gap-3">
+            <button
+              onClick={()=>location.href='checkout.html'}
+              className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
+              style={{background:'linear-gradient(180deg,#3a1104,#2a0c02)',boxShadow:'0 10px 24px rgba(58,17,4,.22)'}}>
+              Ir al carrito
+            </button>
+            <button
+              onClick={close}
+              className="w-full rounded-full px-5 h-12 font-semibold"
+              style={{background:'#fff0d6',border:'2px solid #c28432',color:'#111',boxShadow:'0 6px 16px rgba(58,17,4,.08)'}}>
+              Seguir comprando
             </button>
           </div>
         </div>
@@ -231,13 +307,21 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
+  // Welcome: mostrar una vez por sesión, pero NO si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
+  // Reminder: mostrar SIEMPRE si hay carrito pendiente (cada entrada)
+  const [reminderOpen,setReminderOpen]=useState(false);
+  const [reminderCount,setReminderCount]=useState(0);
+
   useEffect(()=>{
     try {
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      const cartHasItems = Array.isArray(cart) && cart.length > 0;
-      if (cartHasItems) return; // no mostrar si hay carrito pendiente
+      const items = Array.isArray(cart) ? cart.reduce((a,b)=>a+(+b.qty||0),0) : 0;
+      setReminderCount(items);
+      if(items>0){
+        setReminderOpen(true);
+        return; // no bienvenida si hay recordatorio
+      }
     } catch(e){}
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
@@ -285,22 +369,28 @@ function App(){
     setPack(null); setTops([]); setSirs([]);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
     setNotes(""); setRec("");
-    setCount(cart.reduce((a,b)=>a+b.qty,0));
+    const newCount = cart.reduce((a,b)=>a+(+b.qty||0),0);
+    setCount(newCount);
     toast("Agregado al carrito");
+
+    // Mostrar recordatorio en próximos ingresos
+    setReminderCount(newCount);
 
     // ⬆️ Mover scroll al inicio tras agregar
     setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 50);
   }
 
   return (<div>
-    {/* MODAL DE BIENVENIDA */}
+    {/* MODALES */}
     <WelcomeModal
       open={welcomeOpen}
       onClose={()=>setWelcomeOpen(false)}
-      onStart={()=>{
-        setWelcomeOpen(false);
-        setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10);
-      }}
+      onStart={()=>{ setWelcomeOpen(false); setTimeout(()=>window.scrollTo({top:0, behavior:'smooth'}), 10); }}
+    />
+    <ReminderModal
+      open={reminderOpen}
+      onClose={()=>setReminderOpen(false)}
+      cartCount={reminderCount || count}
     />
 
     <Header count={count}/>
@@ -315,7 +405,7 @@ function App(){
               key={p.id}
               onClick={()=>setPack(p.id)}
               className={
-                "text-left rounded-2xl border p-4 w-full " + FOCUS_OFF + " " +
+                "text-left rounded-2xl border p-4 w-full "+ FOCUS_OFF +" "+
                 (p.id===packId ? ACTIVE_BOX : "border-slate-200 bg-white/80 hover:bg-white")
               }
               aria-label={`Elegir ${p.name}`}
@@ -326,7 +416,7 @@ function App(){
                   <p className="text-xs text-slate-600 mt-0.5">{p.desc}</p>
                   <button
                     onClick={(e)=>{e.stopPropagation(); setPreview({src:p.img,title:p.name});}}
-                    className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 " + FOCUS_OFF}
+                    className={"mt-2 inline-flex items-center gap-1 text-xs text-amber-800 underline underline-offset-2 decoration-amber-300 hover:decoration-amber-600 "+FOCUS_OFF}
                     aria-label={`Ver imagen referencial de ${p.name}`}
                     title="Foto referencial"
                   >
@@ -382,8 +472,8 @@ function App(){
                 key={t.id}
                 onClick={()=>toggle(tops,setTops,pack?.incTop||0,t.id)}
                 className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
-                  (active?ACTIVE_BOX:"border-slate-200 bg-white") +
+                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
+                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
                   (dis?" opacity-50 cursor-not-allowed":"")
                 }
                 title={locked?"Debes seleccionar un waffle para continuar":""}
@@ -409,8 +499,8 @@ function App(){
                 key={s.id}
                 onClick={()=>toggle(sirs,setSirs,pack?.incSir||0,s.id)}
                 className={
-                  "text-left rounded-xl border px-3 py-2 " + FOCUS_OFF + " " +
-                  (active?ACTIVE_BOX:"border-slate-200 bg-white") +
+                  "text-left rounded-xl border px-3 py-2 "+FOCUS_OFF+" "+
+                  (active?ACTIVE_BOX:"border-slate-200 bg-white")+
                   (dis?" opacity-50 cursor-not-allowed":"")
                 }
                 title={locked?"Debes seleccionar un waffle para continuar":""}
@@ -446,7 +536,7 @@ function App(){
         </div>
       </Block>
 
-      {/* ============ RESUMEN ============ */}
+      {/* ============ DEDICATORIA ============ */}
       <Block title="Dedicatoria y destinatario">
         <div className="grid sm:grid-cols-2 gap-3">
           <div><label className="text-sm font-medium">Para (nombre)</label>
@@ -457,6 +547,7 @@ function App(){
         </div>
       </Block>
 
+      {/* ============ FOOTER RESUMEN ============ */}
       <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-soft flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="text-sm">
           <div className="flex items-center gap-2 flex-wrap">
@@ -471,21 +562,13 @@ function App(){
           <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
           <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
 
-          {/* BOTÓN ACTUALIZADO */}
           <button
             onClick={add}
             disabled={!pack}
-            className={
-              "btn-pill text-white " + FOCUS_OFF + " " +
-              (!pack ? "btn-disabled" : "hover:bg-[#2a0c02]")
-            }
+            className={"btn-pill text-white "+FOCUS_OFF+" "+(!pack?"btn-disabled":"hover:bg-[#2a0c02]")}
             style={
               !pack
-                ? {
-                    background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))',
-                    opacity:1,
-                    boxShadow:'0 6px 14px rgba(58,17,4,.18)'
-                  }
+                ? { background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))', opacity:1, boxShadow:'0 6px 14px rgba(58,17,4,.18)' }
                 : { background:'#3a1104' }
             }
           >
