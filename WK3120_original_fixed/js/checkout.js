@@ -40,7 +40,7 @@ function HeaderMini({onSeguir}){
     <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
       <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
         <div className="flex items-center gap-3">
-          <img src={LOGO} className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain" />
+          <img src={LOGO} alt="Waffle King" className="h-9 w-9 rounded-xl ring-1 ring-amber-200 object-contain" />
           <div className="leading-4">
             <h1 className="font-extrabold text-base">Waffle King</h1>
             <p className="text-xs text-slate-700">Confirmación y pago</p>
@@ -48,6 +48,7 @@ function HeaderMini({onSeguir}){
           <div className="ml-auto">
             {/* fondo crema + texto negro */}
             <button
+              type="button"
               onClick={onSeguir}
               className="btn-pill border"
               style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
@@ -93,7 +94,7 @@ function PhoneInput({value,onChange,error}){
         aria-invalid={!!error}
         className={
           "mt-1 w-full rounded-lg border p-2 " +
-          (error ? "border-[#b32b11]" : "border-slate-300")
+          (error ? "border-[var(--wk-title-red)]" : "border-slate-300")
         }
       />
       {preview && <div className="text-xs text-slate-500 mt-1">Formato: {preview}</div>}
@@ -121,66 +122,11 @@ function DatosEntrega({state,setState, errors={}}){
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  function getPos(opts){
-    return new Promise((resolve, reject)=>{ navigator.geolocation.getCurrentPosition(resolve, reject, opts); });
-  }
-  async function obtenerPosicionRobusta(){
-    try{ return await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
-    catch(e){ if(e && e.code===3){ return await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } throw e; }
-  }
-
-  const handleUbicacion = async () => {
-    if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
-    toast('Obteniendo ubicación…');
-    try{
-      const { coords } = await obtenerPosicionRobusta();
-      const lat = coords.latitude, lng = coords.longitude;
-      const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
-
-      let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      try{
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-        const res = await fetch(url, { headers: { 'Accept':'application/json' } });
-        const data = await res.json();
-        if(data){
-          if (data.address){
-            const a = data.address;
-            const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-            const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
-            const ciudad = (a.city || a.town || a.village || a.county || '').trim();
-            const region = (a.state || '').trim();
-            const cp     = (a.postcode || '').trim();
-            const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
-            if (partes.length) finalDireccion = partes.join(', ');
-          }
-          if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
-        }
-      }catch(_){}
-
-      set('direccion', finalDireccion);
-      set('mapLink', mapsURL);
-      toast('Ubicación detectada ✓');
-    }catch(err){
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (err && err.code === 1) {
-        toast(isIOS
-          ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
-          : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
-      } else if (err && err.code === 2) {
-        toast('Posición no disponible. Activa GPS o prueba en exterior.');
-      } else if (err && err.code === 3) {
-        toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
-      } else {
-        toast('Error de ubicación. Intenta de nuevo.');
-      }
-    }
-  };
-
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         {/* subtítulo rojo vino + bold */}
-        <h3 className="font-bold text-[#b32b11] mb-2">Datos de entrega</h3>
+        <h3 className="font-bold text-[var(--wk-title-red)] mb-2">Datos de entrega</h3>
         <div className="space-y-2">
           {/* Nombre */}
           <div id="field-nombre">
@@ -190,15 +136,15 @@ function DatosEntrega({state,setState, errors={}}){
               onChange={e=>set('nombre',e.target.value)}
               placeholder="Tu nombre"
               aria-invalid={!!errors.nombre}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.nombre ? "border-[#b32b11]" : "border-slate-300")}
+              className={"mt-1 w-full rounded-lg border p-2 " + (errors.nombre ? "border-[var(--wk-title-red)]" : "border-slate-300")}
             />
-            {errors.nombre && <div className="text-xs text-[#b32b11] mt-1">{errors.nombre}</div>}
+            {errors.nombre && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.nombre}</div>}
           </div>
 
           {/* Teléfono */}
           <div id="field-telefono">
             <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)} error={errors.telefono}/>
-            {errors.telefono && <div className="text-xs text-[#b32b11] mt-1">{errors.telefono}</div>}
+            {errors.telefono && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.telefono}</div>}
           </div>
 
           {/* Dirección + Mi ubicación */}
@@ -210,11 +156,59 @@ function DatosEntrega({state,setState, errors={}}){
                 onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt"
                 aria-invalid={!!errors.direccion}
-                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[#b32b11]" : "border-slate-300")}
+                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               />
               <button
                 type="button"
-                onClick={handleUbicacion}
+                onClick={async ()=>{
+                  if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
+                  toast('Obteniendo ubicación…');
+                  try{
+                    const getPos=(opts)=>new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,opts));
+                    let pos;
+                    try{ pos = await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
+                    catch(e){ if(e && e.code===3){ pos = await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } else throw e; }
+                    const {latitude:lat, longitude:lng}=pos.coords;
+                    const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                    let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    try{
+                      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
+                      const res = await fetch(url, { headers: { 'Accept':'application/json' } });
+                      const data = await res.json();
+                      if(data){
+                        if (data.address){
+                          const a = data.address;
+                          const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
+                          const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
+                          const ciudad = (a.city || a.town || a.village || a.county || '').trim();
+                          const region = (a.state || '').trim();
+                          const cp     = (a.postcode || '').trim();
+                          const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
+                          if (partes.length) finalDireccion = partes.join(', ');
+                        }
+                        if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
+                      }
+                    }catch(_){}
+
+                    set('direccion', finalDireccion);
+                    set('mapLink', mapsURL);
+                    toast('Ubicación detectada ✓');
+                  }catch(err){
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    if (err && err.code === 1) {
+                      toast(isIOS
+                        ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
+                        : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
+                    } else if (err && err.code === 2) {
+                      toast('Posición no disponible. Activa GPS o prueba en exterior.');
+                    } else if (err && err.code === 3) {
+                      toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
+                    } else {
+                      toast('Error de ubicación. Intenta de nuevo.');
+                    }
+                  }
+                }}
                 className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm"
                 title="Usar mi ubicación actual"
                 style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
@@ -222,7 +216,7 @@ function DatosEntrega({state,setState, errors={}}){
                 📍 Mi ubicación
               </button>
             </div>
-            {errors.direccion && <div className="text-xs text-[#b32b11] mt-1">{errors.direccion}</div>}
+            {errors.direccion && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
           </div>
 
           {/* Distrito */}
@@ -232,12 +226,12 @@ function DatosEntrega({state,setState, errors={}}){
               value={distrito||""}
               onChange={e=>set('distrito',e.target.value)}
               aria-invalid={!!errors.distrito}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[#b32b11]" : "border-slate-300")}
+              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[var(--wk-title-red)]" : "border-slate-300")}
             >
               <option value="">Selecciona distrito</option>
               {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
             </select>
-            {errors.distrito && <div className="text-xs text-[#b32b11] mt-1">{errors.distrito}</div>}
+            {errors.distrito && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
           </div>
 
           {/* Referencia (opcional) */}
@@ -271,9 +265,9 @@ function DatosEntrega({state,setState, errors={}}){
                 value={fecha||""}
                 onChange={e=>set('fecha',e.target.value)}
                 aria-invalid={!!errors.fecha}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[#b32b11]" : "border-slate-300")}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               />
-              {errors.fecha && <div className="text-xs text-[#b32b11] mt-1">{errors.fecha}</div>}
+              {errors.fecha && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.fecha}</div>}
             </div>
             <div id="field-hora">
               <label className="text-sm font-medium">Hora</label>
@@ -282,9 +276,9 @@ function DatosEntrega({state,setState, errors={}}){
                 value={hora||""}
                 onChange={e=>set('hora',e.target.value)}
                 aria-invalid={!!errors.hora}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[#b32b11]" : "border-slate-300")}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               />
-              {errors.hora && <div className="text-xs text-[#b32b11] mt-1">{errors.hora}</div>}
+              {errors.hora && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.hora}</div>}
             </div>
           </div>
         </div>
@@ -302,7 +296,7 @@ const PACKS=[
 /* ====== MASAS (para editor + WhatsApp) ====== */
 const MASAS = [
   { id:"clasica",  name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness",  name:"Premium (avena)",            delta:5 }, // ← renombrado
+  { id:"fitness",  name:"Premium (avena)",            delta:5 },
 ];
 
 /* ====== LISTAS (actualizadas) ====== */
@@ -396,21 +390,24 @@ function EditModal({item, onClose, onSave}){
       <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e=>e.stopPropagation()}>
         <div className="px-5 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">Editar pedido</div>
-          <button className="btn-pill border" onClick={onClose}>Cerrar</button>
+          <button type="button" className="btn-pill border" onClick={onClose}>Cerrar</button>
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* PACKS (activo: borde dorado #c28432 + fondo blanco) */}
+          {/* PACKS (activo: borde dorado + fondo blanco) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
-              <button key={p.id} onClick={()=>{
+              <button
+                key={p.id}
+                type="button"
+                onClick={()=>{
                   setPackId(p.id);
                   setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
                   setMasaId("clasica");
                 }}
                 className={
                   "text-left rounded-xl border p-3 " +
-                  (p.id===packId ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
+                  (p.id===packId ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")
                 }>
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-600">Incluye {p.incTop} toppings + {p.incSir} siropes</div>
@@ -427,10 +424,11 @@ function EditModal({item, onClose, onSave}){
                 return (
                   <button
                     key={m.id}
+                    type="button"
                     onClick={()=> setMasaId(m.id)}
                     className={
                       "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white")
+                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")
                     }
                   >
                     <div className="flex items-center justify-between">
@@ -446,9 +444,9 @@ function EditModal({item, onClose, onSave}){
           {/* CANTIDAD */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Cantidad</span>
-            <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
+            <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
             <span className="w-10 text-center">{qty}</span>
-            <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>q+1)}>+</button>
+            <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>q+1)}>+</button>
           </div>
 
           {/* TOPPINGS */}
@@ -458,14 +456,17 @@ function EditModal({item, onClose, onSave}){
               {TOPS.map(t=>{
                 const active=tops.includes(t.id); const dis=!active && (tops.length>=limits.incTop);
                 return (
-                  <button key={t.id} onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
                     className={
                       "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
+                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") +
                       (dis ? " opacity-50 cursor-not-allowed" : "")
                     }>
                     <div className="flex items-center justify-between">
-                      <span>{t.name}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
+                      <span>{t.name}</span>{active&&<span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                     </div>
                   </button>
                 );
@@ -480,14 +481,17 @@ function EditModal({item, onClose, onSave}){
               {SIROPES.map(s=>{
                 const active=sirs.includes(s.id); const dis=!active && (sirs.length>=limits.incSir);
                 return (
-                  <button key={s.id} onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
                     className={
                       "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[#c28432] bg-white" : "border-slate-200 bg-white") +
+                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") +
                       (dis ? " opacity-50 cursor-not-allowed" : "")
                     }>
                     <div className="flex items-center justify-between">
-                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-[#3a1104]">✓</span>}
+                      <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                     </div>
                   </button>
                 );
@@ -507,9 +511,9 @@ function EditModal({item, onClose, onSave}){
                       <div className="text-xs text-slate-600">+ S/ {p.price.toFixed(2)} c/u</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,1)}>+</button>
+                      <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,1)}>+</button>
                       <span className="w-8 text-center">{prem[p.id]||0}</span>
-                      <button className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
+                      <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setPremium(p.id,-1)}>−</button>
                     </div>
                   </div>
                 </div>
@@ -527,8 +531,8 @@ function EditModal({item, onClose, onSave}){
         </div>
 
         <div className="px-5 py-3 border-t bg-white sticky bottom-0 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="btn-pill border">Cancelar</button>
-          <button onClick={save} className="btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Guardar cambios</button>
+          <button type="button" onClick={onClose} className="btn-pill border">Cancelar</button>
+          <button type="button" onClick={save} className="btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Guardar cambios</button>
         </div>
       </div>
     </div>
@@ -550,8 +554,8 @@ function CartList({cart, setCart, canCalc}){
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <div className="flex items-center justify-between mb-2">
           {/* subtítulo rojo vino + bold */}
-          <h3 className="font-bold text-[#b32b11]">Resumen de tu compra</h3>
-          {cart.length>0 && <button className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
+          <h3 className="font-bold text-[var(--wk-title-red)]">Resumen de tu compra</h3>
+          {cart.length>0 && <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
             {openAll?"Ocultar detalle":"Mostrar detalle"}
           </button>}
         </div>
@@ -566,8 +570,8 @@ function CartList({cart, setCart, canCalc}){
                 </div>
                 <div className="hidden sm:block sm:col-span-2 text-sm">{soles(it.unitPrice)} <span className="text-xs text-slate-500">c/u</span></div>
                 <div className="mt-2 sm:mt-0 sm:col-span-2 flex items-center justify-end gap-2">
-                  <button className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
-                  <button className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
+                  <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setEditIdx(i)}>Editar</button>
+                  <button type="button" className="px-2 py-1 rounded-full border border-red-300 text-red-600" onClick={()=>remove(i)}>Eliminar</button>
                 </div>
               </div>
 
@@ -655,7 +659,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     <div className="payment-logos flex items-center gap-2">
       <img
         src="assets/yape.png"
-        alt=""
+        alt="Yape"
         className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
         onError={(e)=>{
           if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
@@ -666,7 +670,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
       />
       <img
         src="assets/plin.png"
-        alt=""
+        alt="Plin"
         className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
         onError={(e)=>{
           if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
@@ -685,17 +689,19 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <div className="flex items-center gap-3">
             {Logos}
             {/* subtítulo rojo vino + bold */}
-            <h4 className="font-bold text-[#b32b11]">Forma de pago</h4>
+            <h4 className="font-bold text-[var(--wk-title-red)]">Forma de pago</h4>
           </div>
 
           <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
             <button
+              type="button"
               onClick={()=>copyText(YAPE,setCopied)}
               className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}
             >
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
             <button
+              type="button"
               onClick={()=>setOpen(true)}
               className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition"
             >
@@ -716,6 +722,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           {!voucherPreview ? (
             /* "Subir voucher" rojo vino + blanco en negrita */
             <button
+              type="button"
               onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
               style={{ backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)' }}
@@ -732,8 +739,8 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
               <div className="flex flex-col gap-2">
                 <div className="text-xs text-amber-900">Voucher seleccionado</div>
                 <div className="flex gap-2">
-                  <button onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
-                  <button onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
+                  <button type="button" onClick={abrirPicker} className="px-3 py-1.5 rounded-full border border-amber-300 text-amber-800 text-xs hover:bg-amber-50">Cambiar imagen</button>
+                  <button type="button" onClick={limpiarVoucher} className="px-3 py-1.5 rounded-full border border-red-300 text-red-600 text-xs hover:bg-red-50">Quitar</button>
                 </div>
                 <span className="text-xs text-slate-600">La imagen se subirá al enviar el pedido.</span>
               </div>
@@ -741,16 +748,20 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           )}
 
           {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
-          {voucherErr && <div className="text-xs text-[#b32b11] mt-2">{voucherErr}</div>}
+          {voucherErr && <div className="text-xs text-[var(--wk-title-red)] mt-2">{voucherErr}</div>}
         </div>
       </div>
 
       {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={()=>setOpen(false)}>
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          role="dialog" aria-modal="true" aria-labelledby="wk-qr-title"
+          onClick={()=>setOpen(false)}
+        >
           <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
-            <div className="text-center font-semibold mb-3">QR de Yape</div>
-            <img src={QR} className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
-            <button onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
+            <div id="wk-qr-title" className="text-center font-semibold mb-3">QR de Yape</div>
+            <img src={QR} alt="Código QR de Yape" className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
+            <button type="button" onClick={()=>setOpen(false)} className="mt-4 w-full btn-pill bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">Cerrar</button>
           </div>
         </div>
       )}
@@ -1053,6 +1064,7 @@ function App(){
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
         {/* CTA SIEMPRE ACTIVO: rojo vino + blanco bold */}
         <button
+          type="button"
           onClick={handleEnviarClick}
           className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
         >
@@ -1064,3 +1076,4 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
