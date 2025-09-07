@@ -5,6 +5,10 @@ const LOGO="assets/logo.png";
 const WELCOME_VIDEO="assets/welcome.mp4";
 const WELCOME_POSTER="assets/welcome-poster.jpg";
 
+/* === NUEVO: video recordatorio de carrito === */
+const REMINDER_VIDEO="assets/aviso.mp4";
+const REMINDER_POSTER="assets/aviso-poster.jpg"; // opcional
+
 /* ============ Packs (con imagen referencial) ============ */
 const PACKS = [
   { id:"special", name:"Waffle Especial (1 piso)", price:25, incTop:3, incSir:2, desc:"Incluye 3 toppings + 2 siropes + dedicatoria", img:"assets/ref-special.jpg" },
@@ -46,9 +50,13 @@ const soles=n=>"S/ "+(Math.round(n*100)/100).toFixed(2);
 function toast(m){const t=document.getElementById("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1300)}
 
 function useCartCount(){
-  const [c,setC]=useState(()=>JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+  const initial = (()=> {
+    try { return JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0); }
+    catch(_) { return 0; }
+  })();
+  const [c,setC]=useState(initial);
   useEffect(()=>{
-    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+b.qty,0));
+    const on=()=>setC(JSON.parse(localStorage.getItem("wk_cart")||"[]").reduce((a,b)=>a+(+b.qty||0),0));
     window.addEventListener("storage",on);
     return()=>window.removeEventListener("storage",on)
   },[]);
@@ -158,6 +166,108 @@ function WelcomeModal({open,onClose,onStart}){
 }
 /* ===================================================================== */
 
+/* ============ NUEVO: Modal “Tu pedido se quedó a medio antojo” ============ */
+function ReminderModal({open,count,onClose,onGotoCart}){
+  const [visible,setVisible]=useState(false);
+  useEffect(()=>{ if(open){ setTimeout(()=>setVisible(true),0); } },[open]);
+  if(!open) return null;
+
+  const plural = (count||0)===1 ? "waffle esperando" : "waffles esperando";
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+      role="dialog" aria-modal="true" aria-labelledby="wk-reminder-title"
+      onClick={(e)=>{ if(e.target===e.currentTarget) onClose?.(); }}
+      style={{background:'rgba(0,0,0,.45)'}}
+    >
+      <div
+        className="relative bg-white rounded-2xl border-2 max-h-[80vh] overflow-visible"
+        style={{
+          borderColor:'#c28432',
+          width:'min(92vw, 560px)',
+          boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
+          transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
+          opacity: visible ? 1 : 0,
+          transition:'transform .2s ease, opacity .2s ease'
+        }}
+      >
+        <button
+          aria-label="Cerrar"
+          onClick={onClose}
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
+          style={{
+            border:'2px solid #c28432',
+            color:'#3a1104', background:'#fff',
+            boxShadow:'0 6px 16px rgba(58,17,4,.22)'
+          }}
+        >×</button>
+
+        {/* Texto a la IZQUIERDA, video a la DERECHA */}
+        <div className="grid md:grid-cols-[1fr,220px] gap-4 p-4 md:p-5 items-center">
+          {/* IZQ: Texto + botones */}
+          <div className="flex flex-col items-start justify-center gap-3 md:gap-4 md:pr-5 md:border-r md:border-amber-200">
+            <h2
+              id="wk-reminder-title"
+              className="font-extrabold text-xl md:text-[22px] leading-tight tracking-tight"
+              style={{
+                backgroundImage:'linear-gradient(90deg,#b32b11 0%, #6c1e00 100%)',
+                WebkitBackgroundClip:'text',
+                backgroundClip:'text',
+                color:'transparent'
+              }}
+            >
+              Tu pedido se quedó a medio antojo 🍓
+            </h2>
+            <p className="text-sm text-[#4e3427]">
+              Tienes <b>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <button
+                onClick={onGotoCart}
+                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-bold text-white transition active:scale-[0.98]"
+                style={{background:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)'}}
+              >
+                Ir al carrito
+              </button>
+              <button
+                onClick={onClose}
+                className="inline-flex items-center justify-center rounded-full px-5 h-11 w-full sm:w-auto font-semibold"
+                style={{background:'var(--wk-cream)', border:'2px solid #c28432', color:'#111'}}
+              >
+                Seguir comprando
+              </button>
+            </div>
+          </div>
+
+          {/* DER: Video */}
+          <div
+            className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 bg-white"
+            style={{ borderColor:'#c28432', width:'200px', height:'240px', boxShadow:'0 8px 16px rgba(58,17,4,.06)' }}
+          >
+            <video
+              src={REMINDER_VIDEO}
+              poster={REMINDER_POSTER}
+              autoPlay
+              muted
+              loop
+              playsInline
+              disablePictureInPicture
+              controls={false}
+              controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+              onContextMenu={(e)=>e.preventDefault()}
+              className="w-full h-full object-contain bg-white"
+              style={{ pointerEvents:'none', userSelect:'none' }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================ HEADER ============================ */
 function Header({count}){
   return (<header className="sticky top-0 z-40 glass border-b border-amber-100/70">
     <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
@@ -243,6 +353,16 @@ function App(){
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
+  /* === NUEVO: abrir Reminder cada vez que se entra si hay carrito con cantidad > 0 === */
+  const [reminderOpen,setReminderOpen]=useState(false);
+  useEffect(()=>{
+    try{
+      const list = JSON.parse(localStorage.getItem('wk_cart')||'[]');
+      const qty  = Array.isArray(list) ? list.reduce((a,b)=>a+(+b.qty||0),0) : 0;
+      if(qty>0) setReminderOpen(true);
+    }catch(e){}
+  },[]);
+
   useEffect(()=>{
     setTops([]);setSirs([]);setQty(1);setMasaId(null);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0])));
@@ -285,7 +405,7 @@ function App(){
     setPack(null); setTops([]); setSirs([]);
     setPrem(Object.fromEntries(PREMIUM.map(p=>[p.id,0]))); setQty(1);
     setNotes(""); setRec("");
-    setCount(cart.reduce((a,b)=>a+b.qty,0));
+    setCount(cart.reduce((a,b)=>a+(+b.qty||0),0));
     toast("Agregado al carrito");
 
     // ⬆️ Mover scroll al inicio tras agregar
@@ -293,6 +413,14 @@ function App(){
   }
 
   return (<div>
+    {/* MODAL DE RECORDATORIO (texto izquierda, video derecha) */}
+    <ReminderModal
+      open={reminderOpen}
+      count={count}
+      onClose={()=>setReminderOpen(false)}
+      onGotoCart={()=>{ setReminderOpen(false); location.href='checkout.html'; }}
+    />
+
     {/* MODAL DE BIENVENIDA */}
     <WelcomeModal
       open={welcomeOpen}
@@ -500,3 +628,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
