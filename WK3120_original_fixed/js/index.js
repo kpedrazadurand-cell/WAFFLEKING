@@ -84,9 +84,7 @@ function WelcomeModal({open,onClose,onStart}){
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar:
-            - móvil: dentro (top-2 right-2)
-            - desktop: fuera (md:-top-3 md:-right-3) */}
+        {/* Cerrar */}
         <button
           aria-label="Cerrar"
           onClick={()=>closeWithAnim(onClose)}
@@ -99,7 +97,7 @@ function WelcomeModal({open,onClose,onStart}){
         >×</button>
 
         <div className="grid md:grid-cols-[240px,1fr] gap-4 p-4 md:p-5 items-center">
-          {/* IZQ: personaje (centrado en móvil) */}
+          {/* IZQ: personaje */}
           <div
             className="rounded-xl border-2 overflow-hidden mx-auto md:mx-0 md:ml-5 bg-white"
             style={{
@@ -108,7 +106,6 @@ function WelcomeModal({open,onClose,onStart}){
               boxShadow:'0 8px 16px rgba(58,17,4,.06)'
             }}
           >
-            {/* VIDEO SIN PIP / SIN CONTROLES / PASIVO */}
             <video
               src={WELCOME_VIDEO}
               poster={WELCOME_POSTER}
@@ -234,21 +231,16 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: SOLO primera carga de la pestaña y NUNCA si hay carrito pendiente
+  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
-    const isFirstSessionLoad = sessionStorage.getItem('wk_session_opened') !== '1';
-    sessionStorage.setItem('wk_session_opened','1');
-
-    let cartHasItems=false;
-    try{
+    try {
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      cartHasItems = Array.isArray(cart) && cart.length > 0;
-    }catch(e){}
-
-    if(isFirstSessionLoad && !cartHasItems){
-      setWelcomeOpen(true);
-    }
+      const cartHasItems = Array.isArray(cart) && cart.length > 0;
+      if (cartHasItems) return; // no mostrar si hay carrito pendiente
+    } catch(e){}
+    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
+    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
   },[]);
 
   useEffect(()=>{
@@ -425,7 +417,7 @@ function App(){
               >
                 <div className="flex items-center justify-between">
                   <span className={active ? "font-semibold" : ""}>
-                    {s.name}{s.extra?` (+${soles(s.extra)})`:''}
+                    {s.name}{s.extra?` (+${soles(s.extra)})`:""}
                   </span>
                   {active && <span className="text-xs text-[#3a1104]">✓</span>}
                 </div>
@@ -478,12 +470,23 @@ function App(){
           <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>Math.max(1,q-1))} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>−</button>
           <span className="w-10 text-center font-semibold">{!pack?0:qty}</span>
           <button className={"px-3 py-2 rounded-full border "+FOCUS_OFF} onClick={()=>setQty(q=>q+1)} disabled={!pack} title={!pack?"Debes seleccionar un waffle para continuar":""}>+</button>
+
+          {/* BOTÓN ACTUALIZADO */}
           <button
             onClick={add}
             disabled={!pack}
             className={
               "btn-pill text-white " + FOCUS_OFF + " " +
-              (!pack ? "btn-disabled bg-amber-400" : "bg-[#3a1104] hover:bg-[#2a0c02]")
+              (!pack ? "btn-disabled" : "hover:bg-[#2a0c02]")
+            }
+            style={
+              !pack
+                ? {
+                    background:'linear-gradient(180deg, rgba(58,17,4,0.62), rgba(58,17,4,0.46))',
+                    opacity:1,
+                    boxShadow:'0 6px 14px rgba(58,17,4,.18)'
+                  }
+                : { background:'#3a1104' }
             }
           >
             Agregar al carrito
