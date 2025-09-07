@@ -234,16 +234,21 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
+  // Welcome: SOLO primera carga de la pestaña y NUNCA si hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
-    try {
+    const isFirstSessionLoad = sessionStorage.getItem('wk_session_opened') !== '1';
+    sessionStorage.setItem('wk_session_opened','1');
+
+    let cartHasItems=false;
+    try{
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      const cartHasItems = Array.isArray(cart) && cart.length > 0;
-      if (cartHasItems) return; // no mostrar si hay carrito pendiente
-    } catch(e){}
-    const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
-    if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
+      cartHasItems = Array.isArray(cart) && cart.length > 0;
+    }catch(e){}
+
+    if(isFirstSessionLoad && !cartHasItems){
+      setWelcomeOpen(true);
+    }
   },[]);
 
   useEffect(()=>{
@@ -420,7 +425,7 @@ function App(){
               >
                 <div className="flex items-center justify-between">
                   <span className={active ? "font-semibold" : ""}>
-                    {s.name}{s.extra?` (+${soles(s.extra)})`:""}
+                    {s.name}{s.extra?` (+${soles(s.extra)})`:''}
                   </span>
                   {active && <span className="text-xs text-[#3a1104]">✓</span>}
                 </div>
@@ -492,4 +497,3 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
