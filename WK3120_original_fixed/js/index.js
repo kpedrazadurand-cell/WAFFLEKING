@@ -39,7 +39,7 @@ const SIROPES=[
 ];
 
 const PREMIUM=[
-  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p- duraznos",name:"Duraznos",price:3},
+  {id:"p-kiwi",name:"Kiwi",price:3},{id:"p-duraznos",name:"Duraznos",price:3},
   {id:"p-pinguinito",name:"Pingüinito",price:3},{id:"p-snickers",name:"Snickers",price:5},
   {id:"p-brownie",name:"Brownie",price:3},{id:"p-mms",name:"M&M",price:5},
   {id:"p-kitkat",name:"Kit Kat",price:5},{id:"p-hersheysp",name:"Hersheys",price:5},
@@ -159,40 +159,41 @@ function ReminderModal({open,count,onClose,onGotoCart}){
       style={{background:'rgba(0,0,0,.45)'}}
     >
       <div
-        className="relative bg-white rounded-2xl border-2 w-full max-w-[920px] overflow-hidden"
+        className="relative bg-white rounded-2xl border-2 overflow-hidden"
         style={{
           borderColor:'#c28432',
+          width:'min(92vw, 560px)',                    // más pequeño (≈ como la bienvenida)
           boxShadow:'0 20px 50px rgba(58,17,4,.28), 0 4px 18px rgba(58,17,4,.15)',
           transform: visible ? 'scale(1) translateY(0)' : 'scale(.98) translateY(6px)',
           opacity: visible ? 1 : 0,
           transition:'transform .2s ease, opacity .2s ease'
         }}
       >
-        {/* Cerrar */}
+        {/* Cerrar: fuera del flujo para no tapar texto */}
         <button
-          aria-label="Cerrar" onClick={onClose}
-          className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center"
+          aria-label="Cerrar"
+          onClick={onClose}
+          className="absolute h-9 w-9 rounded-full flex items-center justify-center z-10 top-2 right-2 md:-top-3 md:-right-3"
           style={{border:'2px solid #c28432',background:'#fff',color:'#3a1104',boxShadow:'0 6px 16px rgba(58,17,4,.18)'}}
         >×</button>
 
-        {/* Contenido: desktop = grid; mobile = stack */}
-        <div className="grid md:grid-cols-[1fr,320px] gap-0 pt-6 md:pt-0">
-          {/* Texto */}
-          <div className="p-5 md:p-7">
+        {/* Desktop: texto izquierda (con botones) + video derecha
+            Mobile: texto -> video -> botones */}
+        <div className="grid md:grid-cols-[1fr,220px] gap-4 p-5 md:p-6 items-center">
+          {/* TEXTO */}
+          <div className="flex flex-col items-center md:items-start">
             <h3 id="wk-reminder-title"
-                className="text-[22px] md:text-[26px] font-extrabold leading-snug text-center md:text-left"
+                className="text-[22px] md:text-[24px] font-extrabold leading-snug text-center md:text-left"
                 style={{color:'#8e240c'}}>
               Tu pedido se quedó a medio antojo 🍓
             </h3>
-            <div className="mx-auto md:mx-0 my-3 h-[3px] w-16 rounded-full"
-                 style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
-            <p className="text-[15px] md:text-[16px] text-[#4e3427] leading-relaxed text-center md:text-left">
-              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito.
-              <br className="hidden md:block"/> ¿Deseas retomarlo?
+            <div className="h-[3px] w-16 rounded-full my-3" style={{background:'linear-gradient(90deg,#c28432,#b32b11)'}}/>
+            <p className="text-[15px] text-[#4e3427] leading-relaxed text-center md:text-left">
+              Tienes <b style={{color:'#8e240c'}}>{count}</b> {plural} en tu carrito. ¿Deseas retomarlo?
             </p>
 
-            {/* Botones desktop (alineados con el texto) */}
-            <div className="mt-5 hidden md:flex items-center gap-3">
+            {/* BOTONES: solo desktop aquí */}
+            <div className="mt-4 hidden md:flex items-center gap-3">
               <button
                 onClick={onGotoCart}
                 className="font-bold text-white rounded-full px-5 h-11 whitespace-nowrap min-w-[180px]"
@@ -210,10 +211,12 @@ function ReminderModal({open,count,onClose,onGotoCart}){
             </div>
           </div>
 
-          {/* Video (derecha desktop / al medio mobile) */}
-          <div className="px-5 pb-2 md:px-7 md:py-7">
-            <div className="rounded-[18px] border-2 overflow-hidden mx-auto"
-                 style={{borderColor:'#c28432',boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}>
+          {/* VIDEO */}
+          <div className="w-full flex justify-center">
+            <div
+              className="rounded-[16px] border-2 overflow-hidden"
+              style={{borderColor:'#c28432', width:'200px', height:'220px', boxShadow:'inset 0 0 0 4px rgba(194,132,50,.06)'}}
+            >
               <video
                 src={REMINDER_VIDEO}
                 poster={REMINDER_POSTER}
@@ -221,13 +224,13 @@ function ReminderModal({open,count,onClose,onGotoCart}){
                 controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
                 onContextMenu={(e)=>e.preventDefault()}
                 className="w-full h-full object-contain bg-white"
-                style={{ pointerEvents:'none', userSelect:'none', maxHeight:'360px' }}
+                style={{ pointerEvents:'none', userSelect:'none' }}
               />
             </div>
           </div>
 
-          {/* Botones mobile (debajo de la imagen) */}
-          <div className="px-5 pb-6 md:hidden flex flex-col gap-3">
+          {/* BOTONES: versión móvil (debajo de la imagen) */}
+          <div className="md:hidden col-span-1 flex flex-col gap-3 mt-2">
             <button
               onClick={onGotoCart}
               className="w-full font-bold text-white rounded-full px-5 h-12 whitespace-nowrap"
@@ -323,13 +326,13 @@ function App(){
 
   const [preview,setPreview]=useState(null);
 
-  // Welcome: mostrar una vez por sesión, PERO nunca si hay carrito pendiente
+  // Welcome: 1 sola vez por sesión y SOLO si NO hay carrito pendiente
   const [welcomeOpen,setWelcomeOpen]=useState(false);
   useEffect(()=>{
     try {
       const cart = JSON.parse(localStorage.getItem('wk_cart') || '[]');
-      const cartHasItems = Array.isArray(cart) && cart.length > 0;
-      if (cartHasItems) return; // no mostrar si hay carrito pendiente
+      const cartHasItems = Array.isArray(cart) && cart.reduce((a,b)=>a+(+b.qty||0),0) > 0;
+      if (cartHasItems) return; // si hay carrito, no mostramos bienvenida
     } catch(e){}
     const seen = sessionStorage.getItem('wk_welcome_seen')==='1';
     if(!seen){ setWelcomeOpen(true); sessionStorage.setItem('wk_welcome_seen','1'); }
@@ -598,3 +601,4 @@ function App(){
   </div>);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
