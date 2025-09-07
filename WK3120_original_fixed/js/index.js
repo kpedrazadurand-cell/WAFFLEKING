@@ -13,7 +13,7 @@ const PACKS = [
 
 const MASAS = [
   { id:"clasica", name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness", name:"Fitness (avena)",           delta:5 },
+  { id:"fitness", name:"Premium (avena)",           delta:5 },
 ];
 
 const TOPS = [
