@@ -46,7 +46,6 @@ function HeaderMini({onSeguir}){
             <p className="text-xs text-slate-700">Confirmación y pago</p>
           </div>
           <div className="ml-auto">
-            {/* fondo crema + texto negro */}
             <button
               onClick={onSeguir}
               className="btn-pill border"
@@ -83,7 +82,7 @@ function PhoneInput({value,onChange,error}){
   }
   const preview = val.length===9 ? `+51 ${val.slice(0,3)} ${val.slice(3,6)} ${val.slice(6)}` : "";
   return (
-    <div>
+    <div id="field-telefono">
       <label className="text-sm font-medium">Teléfono</label>
       <input
         value={val}
@@ -92,11 +91,12 @@ function PhoneInput({value,onChange,error}){
         placeholder="9xxxxxxxx"
         aria-invalid={!!error}
         className={
-          "mt-1 w-full rounded-lg border p-2 " +
+          "mt-1 w-full rounded-lg border p-2.5 h-11 bg-white text-[15px] " +
           (error ? "border-[#b32b11]" : "border-slate-300")
         }
       />
       {preview && <div className="text-xs text-slate-500 mt-1">Formato: {preview}</div>}
+      {error && <div className="text-xs text-[#b32b11] mt-1">{error}</div>}
     </div>
   );
 }
@@ -113,10 +113,7 @@ function DatosEntrega({state,setState, errors={}}){
     }catch(e){}
     setHydrated(true);
   },[]);
-  useEffect(()=>{
-    if(!hydrated) return;
-    try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
-  },[state, hydrated]);
+  useEffect(()=>{ if(hydrated){ try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){} } },[state, hydrated]);
 
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
@@ -179,8 +176,8 @@ function DatosEntrega({state,setState, errors={}}){
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        {/* subtítulo rojo vino + bold */}
         <h3 className="font-bold text-[#b32b11] mb-2">Datos de entrega</h3>
+
         <div className="space-y-2">
           {/* Nombre */}
           <div id="field-nombre">
@@ -190,16 +187,16 @@ function DatosEntrega({state,setState, errors={}}){
               onChange={e=>set('nombre',e.target.value)}
               placeholder="Tu nombre"
               aria-invalid={!!errors.nombre}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.nombre ? "border-[#b32b11]" : "border-slate-300")}
+              className={
+                "mt-1 w-full rounded-lg border p-2.5 h-11 bg-white text-[15px] " +
+                (errors.nombre ? "border-[#b32b11]" : "border-slate-300")
+              }
             />
             {errors.nombre && <div className="text-xs text-[#b32b11] mt-1">{errors.nombre}</div>}
           </div>
 
           {/* Teléfono */}
-          <div id="field-telefono">
-            <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)} error={errors.telefono}/>
-            {errors.telefono && <div className="text-xs text-[#b32b11] mt-1">{errors.telefono}</div>}
-          </div>
+          <PhoneInput value={telefono||""} onChange={v=>set('telefono',v)} error={errors.telefono}/>
 
           {/* Dirección + Mi ubicación */}
           <div id="field-direccion">
@@ -210,12 +207,15 @@ function DatosEntrega({state,setState, errors={}}){
                 onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt"
                 aria-invalid={!!errors.direccion}
-                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[#b32b11]" : "border-slate-300")}
+                className={
+                  "flex-1 min-w-0 rounded-lg border p-2.5 h-11 bg-white text-[15px] " +
+                  (errors.direccion ? "border-[#b32b11]" : "border-slate-300")
+                }
               />
               <button
                 type="button"
                 onClick={handleUbicacion}
-                className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm"
+                className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 h-11 text-sm"
                 title="Usar mi ubicación actual"
                 style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
               >
@@ -225,18 +225,30 @@ function DatosEntrega({state,setState, errors={}}){
             {errors.direccion && <div className="text-xs text-[#b32b11] mt-1">{errors.direccion}</div>}
           </div>
 
-          {/* Distrito */}
+          {/* Distrito (select con chevron) */}
           <div id="field-distrito">
             <label className="text-sm font-medium">Distrito</label>
-            <select
-              value={distrito||""}
-              onChange={e=>set('distrito',e.target.value)}
-              aria-invalid={!!errors.distrito}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[#b32b11]" : "border-slate-300")}
-            >
-              <option value="">Selecciona distrito</option>
-              {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="relative mt-1">
+              <select
+                value={distrito||""}
+                onChange={e=>set('distrito',e.target.value)}
+                aria-invalid={!!errors.distrito}
+                className={
+                  "w-full rounded-lg border p-2.5 pr-10 h-11 bg-white text-[15px] appearance-none " +
+                  (errors.distrito ? "border-[#b32b11]" : "border-slate-300")
+                }
+              >
+                <option value="">Selecciona distrito</option>
+                {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
+              </select>
+              {/* Chevron */}
+              <svg
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#b32b11] opacity-70"
+                viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+              >
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.24 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+              </svg>
+            </div>
             {errors.distrito && <div className="text-xs text-[#b32b11] mt-1">{errors.distrito}</div>}
           </div>
 
@@ -247,7 +259,7 @@ function DatosEntrega({state,setState, errors={}}){
               value={referencia||""}
               onChange={e=>set('referencia',e.target.value)}
               placeholder="Frente a parque / tienda / etc."
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 h-11 bg-white text-[15px]"
             />
           </div>
 
@@ -258,12 +270,12 @@ function DatosEntrega({state,setState, errors={}}){
               value={mapLink||""}
               onChange={e=>set('mapLink',e.target.value)}
               placeholder="Pega tu link"
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 h-11 bg-white text-[15px]"
             />
           </div>
 
-          {/* Fecha y Hora */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Fecha y Hora (stack en móvil, 2 columnas en desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div id="field-fecha">
               <label className="text-sm font-medium">Fecha de entrega</label>
               <input
@@ -271,7 +283,10 @@ function DatosEntrega({state,setState, errors={}}){
                 value={fecha||""}
                 onChange={e=>set('fecha',e.target.value)}
                 aria-invalid={!!errors.fecha}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[#b32b11]" : "border-slate-300")}
+                className={
+                  "mt-1 w-full rounded-lg border p-2.5 h-11 bg-white text-[15px] " +
+                  (errors.fecha ? "border-[#b32b11]" : "border-slate-300")
+                }
               />
               {errors.fecha && <div className="text-xs text-[#b32b11] mt-1">{errors.fecha}</div>}
             </div>
@@ -279,10 +294,14 @@ function DatosEntrega({state,setState, errors={}}){
               <label className="text-sm font-medium">Hora</label>
               <input
                 type="time"
+                step="900"
                 value={hora||""}
                 onChange={e=>set('hora',e.target.value)}
                 aria-invalid={!!errors.hora}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[#b32b11]" : "border-slate-300")}
+                className={
+                  "mt-1 w-full rounded-lg border p-2.5 h-11 bg-white text-[15px] " +
+                  (errors.hora ? "border-[#b32b11]" : "border-slate-300")
+                }
               />
               {errors.hora && <div className="text-xs text-[#b32b11] mt-1">{errors.hora}</div>}
             </div>
@@ -302,7 +321,7 @@ const PACKS=[
 /* ====== MASAS (para editor + WhatsApp) ====== */
 const MASAS = [
   { id:"clasica",  name:"Clásica (harina de trigo)", delta:0 },
-  { id:"fitness",  name:"Premium (avena)",            delta:5 }, // ← renombrado
+  { id:"fitness",  name:"Premium (avena)",            delta:5 },
 ];
 
 /* ====== LISTAS (actualizadas) ====== */
@@ -400,7 +419,6 @@ function EditModal({item, onClose, onSave}){
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* PACKS (activo: borde dorado #c28432 + fondo blanco) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
               <button key={p.id} onClick={()=>{
@@ -418,7 +436,6 @@ function EditModal({item, onClose, onSave}){
             ))}
           </div>
 
-          {/* TIPO DE MASA (activo igual que arriba) */}
           <div>
             <div className="text-sm font-medium mb-1">Tipo de masa</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -443,7 +460,6 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
-          {/* CANTIDAD */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Cantidad</span>
             <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>Math.max(1,q-1))}>−</button>
@@ -451,7 +467,6 @@ function EditModal({item, onClose, onSave}){
             <button className="px-2 py-1 rounded-full border" onClick={()=>setQty(q=>q+1)}>+</button>
           </div>
 
-          {/* TOPPINGS */}
           <div>
             <div className="text-sm font-medium mb-1">Toppings ({(tops||[]).length}/{limits.incTop} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -473,7 +488,6 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
-          {/* SIROPES */}
           <div>
             <div className="text-sm font-medium mb-1">Siropes ({(sirs||[]).length}/{limits.incSir} incl.)</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -495,7 +509,6 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
-          {/* PREMIUM */}
           <div>
             <div className="text-sm font-medium">Toppings Premium</div>
             <div className="grid md:grid-cols-2 gap-2">
@@ -517,10 +530,9 @@ function EditModal({item, onClose, onSave}){
             </div>
           </div>
 
-          {/* DEDICATORIA */}
           <div>
             <div className="text-sm font-medium">Dedicatoria (opcional)</div>
-            <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Para Mackey..." className="mt-1 w-full rounded-lg border border-slate-300 p-2"/>
+            <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Para Mackey..." className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 h-11 bg-white text-[15px]"/>
             <textarea value={notes} onChange={e=>setNotes(e.target.value.slice(0,180))} className="mt-2 w-full rounded-lg border border-slate-300 p-2" rows="2" placeholder="Mensaje / dedicatoria"></textarea>
             <div className="text-xs text-slate-500">{notes.length}/180</div>
           </div>
@@ -549,7 +561,6 @@ function CartList({cart, setCart, canCalc}){
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <div className="flex items-center justify-between mb-2">
-          {/* subtítulo rojo vino + bold */}
           <h3 className="font-bold text-[#b32b11]">Resumen de tu compra</h3>
           {cart.length>0 && <button className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
             {openAll?"Ocultar detalle":"Mostrar detalle"}
@@ -573,7 +584,6 @@ function CartList({cart, setCart, canCalc}){
 
               {openAll && (
                 <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
-                  {/* Masa */}
                   <div className="sm:col-span-3">
                     <div className="font-semibold">Masa</div>
                     <div>{
@@ -684,7 +694,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
-            {/* subtítulo rojo vino + bold */}
             <h4 className="font-bold text-[#b32b11]">Forma de pago</h4>
           </div>
 
@@ -714,7 +723,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
-            /* "Subir voucher" rojo vino + blanco en negrita */
             <button
               onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
@@ -759,7 +767,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 }
 
 /* ===================== WhatsApp message builder ===================== */
-
 function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
@@ -777,10 +784,8 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
   cart.forEach((it,i)=>{
     L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
-
     const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
     if(masa) L.push("   · Masa: " + masa);
-
     if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
     if(it.siropes?.length)L.push("   · Siropes: "+it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "));
     if(it.premium?.length)L.push("   · Premium: "+it.premium.map(p=>`${p.name} x${p.qty}`).join(", "));
@@ -807,7 +812,6 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
   return encodeURIComponent(L.join("\n"));
 }
-
 
 /* ==================== Helpers a Sheets (se mantienen) ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
@@ -865,7 +869,6 @@ function App(){
     fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
   });
 
-  // errores formulario + voucher
   const [errors, setErrors] = useState({});
   const [voucherErr, setVoucherErr] = useState("");
 
@@ -924,7 +927,6 @@ function App(){
     }catch(_){}
   },[cart]);
 
-  // Voucher
   const [voucherFile, setVoucherFile] = useState(null);
   const [voucherPreview, setVoucherPreview] = useState("");
 
@@ -958,7 +960,6 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR (con validación guiada) ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
 
@@ -1010,7 +1011,6 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  // Click del CTA: valida, marca errores, hace scroll y/o envía
   function handleEnviarClick(){
     const errs = validateDelivery(state);
     const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
@@ -1051,7 +1051,6 @@ function App(){
         voucherErr={voucherErr}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* CTA SIEMPRE ACTIVO: rojo vino + blanco bold */}
         <button
           onClick={handleEnviarClick}
           className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
