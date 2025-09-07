@@ -14,14 +14,14 @@
   <style>
     /* ===== Paleta unificada ===== */
     :root{
-      --wk-brown-deep:#3a1104;   /* header + badge carrito */
+      --wk-brown-deep:#3a1104;   /* header + botones primarios */
       --wk-gold:#c28432;         /* dorado (bordes / acentos) */
       --wk-cream:#fff0d6;        /* crema (fondo) */
     }
 
     body{
       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
-      background: var(--wk-cream);   /* fondo crema */
+      background: var(--wk-cream);
       min-height:100vh;
     }
 
@@ -45,7 +45,7 @@
     header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
     header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
 
-    /* >>> Badge del carrito: MARRÓN y texto blanco */
+    /* Badge del carrito: marrón y texto blanco */
     header.glass .bg-amber-600{
       background-color: var(--wk-brown-deep) !important;
       color:#fff !important;
@@ -59,10 +59,11 @@
       border-width: 2px !important;
     }
 
-    /* Utilería */
+    /* Utilería existente */
     .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
+
     .toast{
       position:fixed;bottom:16px;left:50%;
       transform:translate(-50%,16px);
@@ -71,13 +72,69 @@
       opacity:0;transition:all .25s;z-index:60
     }
     .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    /* ================== NUEVO: estilos de botones ================== */
+    /* Primario: marrón sólido (activo) + degradado marrón cuando esté disabled */
+    .btn-wk-primary{
+      background: var(--wk-brown-deep) !important;
+      color:#fff !important;
+      border:2px solid var(--wk-gold) !important;
+      border-radius:9999px !important;
+      font-weight:700 !important;
+    }
+    .btn-wk-primary:hover{ filter:brightness(.97); }
+    .btn-wk-primary:disabled,
+    .btn-wk-primary[aria-disabled="true"]{
+      background: linear-gradient(180deg,#4a1606,#2a0c02) !important;
+      opacity:.9 !important;
+      cursor:not-allowed !important;
+    }
+
+    /* Acento: dorado (ideal para “Subir voucher”) */
+    .btn-wk-accent{
+      background: linear-gradient(180deg,#c28432,#a66d28) !important;
+      color:#fff !important;
+      border:2px solid #b6762d !important;
+      border-radius:9999px !important;
+      font-weight:700 !important;
+    }
+    .btn-wk-accent:hover{ filter:brightness(.98); }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <div id="toast" class="toast">Completa los datos / agrega productos</div>
+
+  <!-- React app -->
   <script type="text/babel" src="js/checkout.js"></script>
+
+  <!-- Script que aplica las clases a los 3 botones por su texto -->
+  <script>
+    (function(){
+      const rules = [
+        { re: /\bSeguir\s+comprando\b/i, cls: 'btn-wk-primary' },
+        { re: /\bEnviar pedido por WhatsApp\b/i, cls: 'btn-wk-primary' },
+        { re: /\bSubir voucher\b/i, cls: 'btn-wk-accent' },
+      ];
+
+      function applyTheme(){
+        const candidates = document.querySelectorAll('button, a');
+        candidates.forEach(el=>{
+          const t = (el.textContent || '').trim();
+          for(const r of rules){
+            if(r.re.test(t)) el.classList.add(r.cls);
+          }
+        });
+      }
+
+      // Ejecuta al cargar y re-ejecuta cuando React re-renderiza
+      const obs = new MutationObserver(()=>applyTheme());
+      obs.observe(document.documentElement, {childList:true, subtree:true});
+
+      window.addEventListener('DOMContentLoaded', applyTheme);
+      window.addEventListener('load', applyTheme);
+    })();
+  </script>
 </body>
 </html>
-
 
