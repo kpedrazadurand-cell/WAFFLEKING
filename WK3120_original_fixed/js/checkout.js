@@ -821,51 +821,49 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
 
 /* ==================== Helpers a Sheets (se mantienen) ==================== */
-function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText}) {
+function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText, voucherUrl = ""}) {
   return {
     orderId,
     cliente: {
-      dni: state?.dni || 0,
-      nombre: state?.nombre || '',
-      telefono: state?.telefono || '',
-      distrito: state?.distrito || '',
-      direccion: state?.direccion || '',
+      dni:        state?.dni || 0,
+      nombre:     state?.nombre || '',
+      telefono:   state?.telefono || '',
+      distrito:   state?.distrito || '',
+      direccion:  state?.direccion || '',
       referencia: state?.referencia || '',
-      mapLink: state?.mapLink || ''
+      mapLink:    state?.mapLink || ''
     },
-    programado: { fecha: state?.fecha || '', hora: state?.hora  || '' },
-    montos: { subtotal, delivery: DELIVERY, total },
-    pago: { metodo: 'Yape/Plin', numero: YAPE, titular: NOMBRE_TITULAR },
+    programado: { 
+      fecha: state?.fecha || '', 
+      hora:  state?.hora  || '' 
+    },
+    montos: { 
+      subtotal, 
+      delivery: DELIVERY, 
+      total 
+    },
+    pago: { 
+      metodo:  'Yape/Plin', 
+      numero:  YAPE, 
+      titular: NOMBRE_TITULAR, 
+      link:    voucherUrl || ''       // <<==== aquí va el link del comprobante
+    },
     items: (cart || []).map(it => ({
-      name: it.name,
-      qty: Number(it.qty || 0),
-      unitPrice: Number(it.unitPrice || 0),
-      toppings: it.toppings || [],
-      siropes:  it.siropes  || [],
-      premium:  it.premium  || [],
-      recipient: it.recipient || '',
-      notes: it.notes || ''
+      name:       it.name,
+      qty:        Number(it.qty || 0),
+      unitPrice:  Number(it.unitPrice || 0),
+      masa:       it.masa || it.masaName || '',        // <<==== masa incluida
+      toppings:   it.toppings || [],
+      siropes:    it.siropes  || [],                   // puede ser array de strings u objetos {name, extra}
+      premium:    it.premium  || [],                   // puede ser array de strings u objetos {name, qty}
+      recipient:  it.recipient || '',
+      notes:      it.notes || ''
     })),
+    pagoLink: voucherUrl || '',  // <<==== alias extra, por compatibilidad
     whatsAppText
   };
 }
 
-async function registrarPedidoGSheet(payload) {
-  try {
-    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
-    const data = JSON.stringify(payload);
-    if (navigator.sendBeacon) { const ok = navigator.sendBeacon(url, data); if (ok) return true; }
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: 'payload=' + encodeURIComponent(data)
-    });
-    return true;
-  } catch (_e) {
-    return false;
-  }
-}
 
 /* ================== APP (con validación guiada) ================== */
 function App(){
