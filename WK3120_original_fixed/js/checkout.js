@@ -15,7 +15,7 @@ const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
 
 /* ============ (Se mantiene) WebApp de Google Sheets ============== */
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyjTzCdi1QxWg0qeqDBLYbSbElIZliVV_NRn1u_2-yugcZpW8zwcgSCGWIidg85iJsJng/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyQdODiIvtzwdTU6jQiAXLe9R2DwAZnYWwmE6m0vpVBbLtKOyKTlA0bFNZl6blIzxJfGA/exec';
 
 const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
 function toast(m){
@@ -35,6 +35,31 @@ async function copyText(text,setCopied){
   setTimeout(()=>setCopied(false),1600);
 }
 
+/* ======== Envío robusto a Google Sheets (sendBeacon + fallback) ======== */
+async function registrarPedidoGSheet(payload) {
+  try {
+    const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
+    const data = JSON.stringify(payload);
+
+    // 1) Intento con sendBeacon (no bloquea navegación)
+    if (navigator.sendBeacon) {
+      const ok = navigator.sendBeacon(url, data);
+      if (ok) return true;
+    }
+    // 2) Fallback: x-www-form-urlencoded (lo soporta el Apps Script)
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: 'payload=' + encodeURIComponent(data)
+    });
+    return true;
+  } catch (e) {
+    console.error('[WK] registrarPedidoGSheet error:', e);
+    return false;
+  }
+}
+
 function HeaderMini({onSeguir}){
   return (
     <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
@@ -46,7 +71,6 @@ function HeaderMini({onSeguir}){
             <p className="text-xs text-slate-700">Confirmación y pago</p>
           </div>
           <div className="ml-auto">
-            {/* fondo crema + texto negro */}
             <button
               type="button"
               onClick={onSeguir}
@@ -61,6 +85,7 @@ function HeaderMini({onSeguir}){
     </header>
   );
 }
+
 
 /* ===== Validador de entrega ===== */
 function validateDelivery(s){
@@ -846,24 +871,23 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       metodo:  'Yape/Plin', 
       numero:  YAPE, 
       titular: NOMBRE_TITULAR, 
-      link:    voucherUrl || ''       // <<==== aquí va el link del comprobante
+      link:    voucherUrl || ''       // <<==== link del comprobante
     },
     items: (cart || []).map(it => ({
       name:       it.name,
       qty:        Number(it.qty || 0),
       unitPrice:  Number(it.unitPrice || 0),
-      masa:       it.masa || it.masaName || '',        // <<==== masa incluida
+      masa:       it.masa || it.masaName || '',        // masa incluida
       toppings:   it.toppings || [],
-      siropes:    it.siropes  || [],                   // puede ser array de strings u objetos {name, extra}
-      premium:    it.premium  || [],                   // puede ser array de strings u objetos {name, qty}
+      siropes:    it.siropes  || [],                   // strings u objetos {name, extra}
+      premium:    it.premium  || [],                   // strings u objetos {name, qty}
       recipient:  it.recipient || '',
       notes:      it.notes || ''
     })),
-    pagoLink: voucherUrl || '',  // <<==== alias extra, por compatibilidad
+    pagoLink: voucherUrl || '',  // alias extra, por compatibilidad
     whatsAppText
   };
 }
-
 
 /* ================== APP (con validación guiada) ================== */
 function App(){
@@ -991,13 +1015,25 @@ function App(){
 
     const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
 
-    try{
-      const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
-      const payload = buildOrderPayloadForSheets({
-        orderId, cart, state: effective, subtotal, total, whatsAppText: decodeURIComponent(text)
-      });
-      registrarPedidoGSheet(payload);
-    }catch(_e){}
+    try {
+  const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
+  const payload = buildOrderPayloadForSheets({
+    orderId,
+    cart,
+    state: effective,
+    subtotal,
+    total,
+    whatsAppText: decodeURIComponent(text),
+    voucherUrl   // <<==== aquí ya viaja el link del comprobante
+  });
+  console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
+  const ok = await registrarPedidoGSheet(payload);
+  console.log('[WK] registrarPedidoGSheet =>', ok);
+  if (ok) toast('Pedido enviado a la hoja ✔');
+  else toast('No se pudo enviar a la hoja');
+} catch (_e) {
+  console.error('[WK] Error preparando envío a Sheets:', _e);
+}
 
     if (isMobile) {
       window.location.href = waWeb;
