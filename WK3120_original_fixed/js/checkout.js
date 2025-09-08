@@ -14,8 +14,8 @@ const CLOUDINARY_CLOUD = "dw35nct1h";
 const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
 
-/* ============ (Se mantiene) WebApp de Google Sheets ============== */
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyQdODiIvtzwdTU6jQiAXLe9R2DwAZnYWwmE6m0vpVBbLtKOyKTlA0bFNZl6blIzxJfGA/exec';
+/* ============ WebApp de Google Sheets ============== */
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxIOX0o4KclXe8RqXagiyWLPEFtnzFPV0xF4-nRuOntNT5XdUgDEn2Iws805QRix-LJwQ/exec';
 
 const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
 function toast(m){
@@ -35,18 +35,18 @@ async function copyText(text,setCopied){
   setTimeout(()=>setCopied(false),1600);
 }
 
-/* ======== Envío robusto a Google Sheets (sendBeacon + fallback) ======== */
+/* ======== Envío a Google Sheets (sendBeacon + fallback) ======== */
 async function registrarPedidoGSheet(payload) {
   try {
     const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
     const data = JSON.stringify(payload);
 
-    // 1) Intento con sendBeacon (no bloquea navegación)
+    // 1) Intento con sendBeacon (ideal porque no bloquea navegación)
     if (navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(url, data);
+      const ok = navigator.sendBeacon(url, data); // Apps Script acepta JSON crudo en postData.contents
       if (ok) return true;
     }
-    // 2) Fallback: x-www-form-urlencoded (lo soporta el Apps Script)
+    // 2) Fallback: x-www-form-urlencoded (payload=...)
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -85,7 +85,6 @@ function HeaderMini({onSeguir}){
     </header>
   );
 }
-
 
 /* ===== Validador de entrega ===== */
 function validateDelivery(s){
@@ -312,19 +311,19 @@ function DatosEntrega({state,setState, errors={}}){
   );
 }
 
-/* ====== PACKS del editor: 2 presentaciones (25 / 45) ====== */
+/* ====== PACKS del editor ====== */
 const PACKS=[
   {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
   {id:"king",   name:"Waffle King (2 pisos)",  base:45,incTop:4,incSir:3},
 ];
 
-/* ====== MASAS (para editor + WhatsApp) ====== */
+/* ====== MASAS ====== */
 const MASAS = [
   { id:"clasica",  name:"Clásica (harina de trigo)", delta:0 },
   { id:"fitness",  name:"Premium (avena)",            delta:5 },
 ];
 
-/* ====== LISTAS (actualizadas) ====== */
+/* ====== LISTAS ====== */
 const TOPS = [
   { id:"t-fresa",     name:"Fresa" },
   { id:"t-platano",   name:"Plátano" },
@@ -419,7 +418,7 @@ function EditModal({item, onClose, onSave}){
         </div>
 
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* PACKS (activo: borde dorado + fondo blanco) */}
+          {/* PACKS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
               <button
@@ -440,7 +439,7 @@ function EditModal({item, onClose, onSave}){
             ))}
           </div>
 
-          {/* TIPO DE MASA (activo igual que arriba) */}
+          {/* MASA */}
           <div>
             <div className="text-sm font-medium mb-1">Tipo de masa</div>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -745,7 +744,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
-            /* "Subir voucher" rojo vino + blanco en negrita */
+            /* "Subir voucher" */
             <button
               type="button"
               onClick={abrirPicker}
@@ -795,7 +794,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 }
 
 /* ===================== WhatsApp message builder ===================== */
-
 function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
@@ -844,8 +842,7 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   return encodeURIComponent(L.join("\n"));
 }
 
-
-/* ==================== Helpers a Sheets (se mantienen) ==================== */
+/* ==================== Helpers a Sheets ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText, voucherUrl = ""}) {
   return {
     orderId,
@@ -871,20 +868,20 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       metodo:  'Yape/Plin', 
       numero:  YAPE, 
       titular: NOMBRE_TITULAR, 
-      link:    voucherUrl || ''       // <<==== link del comprobante
+      link:    voucherUrl || ''    // link del comprobante
     },
     items: (cart || []).map(it => ({
       name:       it.name,
       qty:        Number(it.qty || 0),
       unitPrice:  Number(it.unitPrice || 0),
-      masa:       it.masa || it.masaName || '',        // masa incluida
+      masa:       it.masa || it.masaName || '',
       toppings:   it.toppings || [],
-      siropes:    it.siropes  || [],                   // strings u objetos {name, extra}
-      premium:    it.premium  || [],                   // strings u objetos {name, qty}
+      siropes:    it.siropes  || [],  // strings u objetos {name, extra}
+      premium:    it.premium  || [],  // strings u objetos {name, qty}
       recipient:  it.recipient || '',
       notes:      it.notes || ''
     })),
-    pagoLink: voucherUrl || '',  // alias extra, por compatibilidad
+    pagoLink: voucherUrl || '',  // alias
     whatsAppText
   };
 }
@@ -991,7 +988,7 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR (con validación guiada) ======
+  // ====== ENVIAR ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
 
@@ -1016,24 +1013,24 @@ function App(){
     const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
 
     try {
-  const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
-  const payload = buildOrderPayloadForSheets({
-    orderId,
-    cart,
-    state: effective,
-    subtotal,
-    total,
-    whatsAppText: decodeURIComponent(text),
-    voucherUrl   // <<==== aquí ya viaja el link del comprobante
-  });
-  console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
-  const ok = await registrarPedidoGSheet(payload);
-  console.log('[WK] registrarPedidoGSheet =>', ok);
-  if (ok) toast('Pedido enviado a la hoja ✔');
-  else toast('No se pudo enviar a la hoja');
-} catch (_e) {
-  console.error('[WK] Error preparando envío a Sheets:', _e);
-}
+      const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
+      const payload = buildOrderPayloadForSheets({
+        orderId,
+        cart,
+        state: effective,
+        subtotal,
+        total,
+        whatsAppText: decodeURIComponent(text),
+        voucherUrl   // link del comprobante
+      });
+      console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
+      const ok = await registrarPedidoGSheet(payload);
+      console.log('[WK] registrarPedidoGSheet =>', ok);
+      if (ok) toast('Pedido enviado a la hoja ✔');
+      else toast('No se pudo enviar a la hoja');
+    } catch (_e) {
+      console.error('[WK] Error preparando envío a Sheets:', _e);
+    }
 
     if (isMobile) {
       window.location.href = waWeb;
@@ -1055,7 +1052,7 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  // Click del CTA: valida, marca errores, hace scroll y/o envía
+  // Click del CTA
   function handleEnviarClick(){
     const errs = validateDelivery(state);
     const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
@@ -1096,7 +1093,7 @@ function App(){
         voucherErr={voucherErr}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* CTA SIEMPRE ACTIVO: rojo vino + blanco bold */}
+        {/* CTA */}
         <button
           type="button"
           onClick={handleEnviarClick}
