@@ -15,7 +15,7 @@ const CLOUDINARY_PRESET = "wk-payments";
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/upload`;
 
 /* ============ (Se mantiene) WebApp de Google Sheets ============== */
-const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzKgJX5cprlS8ay6tSyXd3vHi9OdLjIoUnM2M5LIZ6p3_p94jQnadigvRyqbevMrW8/exec';
+const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyjTzCdi1QxWg0qeqDBLYbSbElIZliVV_NRn1u_2-yugcZpW8zwcgSCGWIidg85iJsJng/exec';
 
 const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
 function toast(m){
