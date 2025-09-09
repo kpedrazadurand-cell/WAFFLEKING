@@ -31,75 +31,6 @@
       min-height:100vh;
     }
 
-   /* ===== TEXTURA DE FONDO: coronas, fresas, plátanos y waffles ===== */
-body::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-
-  /* SVG embebido: 360px, trazos gruesos, marrón suave */
-  background-image:url("data:image/svg+xml;utf8,\
-  <svg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'>\
-    <defs>\
-      <!-- Color de trazo: marrón cálido (#8b5e34) -->
-      <!-- Corona -->
-      <g id='crown' fill='none' stroke='%238b5e34' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'>\
-        <path d='M6 28 L14 10 L22 24 L30 8 L38 28 Z'/>\
-        <path d='M6 28 H38'/>\
-        <circle cx='14' cy='10' r='2.5'/><circle cx='22' cy='24' r='2.5'/><circle cx='30' cy='8' r='2.5'/>\
-      </g>\
-      <!-- Fresa -->
-      <g id='strawberry' fill='none' stroke='%238b5e34' stroke-width='2.6' stroke-linecap='round'>\
-        <path d='M24 16c0 10-10 16-10 16S4 26 4 16a10 10 0 0120 0z'/>\
-        <path d='M14 8l3-3 3 3M16 12l-2 3M20 13l-2 3M12 14l2 3'/>\
-      </g>\
-      <!-- Plátano -->
-      <g id='banana' fill='none' stroke='%238b5e34' stroke-width='2.6' stroke-linecap='round'>\
-        <path d='M4 18c10 12 28 16 40 4'/>\
-        <path d='M6 14c8 11 25 15 36 5'/>\
-      </g>\
-      <!-- Waffle (cuadrado con rejilla) -->
-      <g id='waffle' fill='none' stroke='%238b5e34' stroke-width='2.6' stroke-linejoin='round'>\
-        <rect x='2' y='2' width='36' height='36' rx='6' ry='6'/>\
-        <path d='M2 11h36M2 20h36M2 29h36M11 2v36M20 2v36M29 2v36'/>\
-      </g>\
-    </defs>\
-    <rect width='100%' height='100%' fill='transparent'/>\
-    <!-- Distribución grande y aireada (rotaciones leves) -->\
-    <g opacity='1'>\
-      <use href='%23strawberry' x='30'  y='24' transform='rotate(-8 42 32)'/>\
-      <use href='%23crown'      x='120' y='28' transform='rotate(6 139 28)'/>\
-      <use href='%23banana'     x='210' y='26' transform='rotate(-12 230 34)'/>\
-      <use href='%23waffle'     x='285' y='18' transform='rotate(8 305 38)'/>\
-      \
-      <use href='%23waffle'     x='40'  y='140' transform='rotate(12 60 160)'/>\
-      <use href='%23banana'     x='130' y='140' transform='rotate(-6 150 158)'/>\
-      <use href='%23strawberry' x='220' y='140' transform='rotate(10 232 156)'/>\
-      <use href='%23crown'      x='300' y='140' transform='rotate(-8 319 154)'/>\
-      \
-      <use href='%23crown'      x='30'  y='260' transform='rotate(4 49 274)'/>\
-      <use href='%23strawberry' x='115' y='260' transform='rotate(-10 127 276)'/>\
-      <use href='%23waffle'     x='200' y='252' transform='rotate(14 220 272)'/>\
-      <use href='%23banana'     x='285' y='256' transform='rotate(-12 305 270)'/>\
-    </g>\
-  </svg>");
-  background-repeat:repeat;
-  background-size:360px 360px;   /* escala del patrón (grande) */
-  opacity:.14;                    /* visibilidad del dibujo */
-  mix-blend-mode:multiply;        /* se integra con el crema */
-  z-index:0;
-}
-
-/* Garantiza que las tarjetas blancas y el header queden por encima */
-header.glass,
-main .rounded-2xl.bg-white.border,
-section .rounded-2xl.bg-white.border{
-  position:relative;
-  z-index:1;
-}
-
-
     /* Header marrón intenso + texto blanco */
     header.glass{
       background: var(--wk-brown-deep) !important;
@@ -142,8 +73,6 @@ section .rounded-2xl.bg-white.border{
     section .rounded-2xl.bg-white.border{
       border-color: var(--wk-gold) !important;
       border-width: 2px !important;
-      position:relative; /* asegura estar encima de la textura */
-      z-index:1;
     }
 
     /* Utilería */
@@ -179,5 +108,3 @@ section .rounded-2xl.bg-white.border{
   <script type="text/babel" src="js/index.js"></script>
 </body>
 </html>
-
-
