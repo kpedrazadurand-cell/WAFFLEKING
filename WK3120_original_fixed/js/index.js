@@ -280,7 +280,7 @@ function Header({count}){
       </div>
       <div className="mt-2 w-full">
         <div className="rounded-full border-2 border-[var(--wk-gold)] bg-white text-black text-sm px-4 py-2">
-          Entrega solo los fines de semana
+          <b>Entregas solo sábados y domingos.</b>
         </div>
       </div>
     </div>
