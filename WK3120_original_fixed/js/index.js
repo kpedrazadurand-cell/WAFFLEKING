@@ -280,7 +280,7 @@ function Header({count}){
       </div>
       <div className="mt-2 w-full">
         <div className="rounded-full border-2 border-[var(--wk-gold)] bg-white text-black text-sm px-4 py-2">
-          Pedidos con <b>24h</b> de anticipación.
+          Entrega solo los fines de semana
         </div>
       </div>
     </div>
