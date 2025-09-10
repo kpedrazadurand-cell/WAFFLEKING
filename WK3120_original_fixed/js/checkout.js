@@ -367,7 +367,7 @@ function DatosEntrega({state,setState, errors={}}){
                   );
                 })}
               </div>
-              <div className="text-xs text-slate-600 mt-1">Agrupamos pedidos por bloques para optimizar el delivery 💨</div>
+              {/* (mensaje eliminado por pedido del cliente) */}
               {errors.hora && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.hora}</div>}
             </div>
           </div>
