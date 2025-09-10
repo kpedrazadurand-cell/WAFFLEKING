@@ -129,7 +129,7 @@ function PhoneInput({value,onChange,error}){
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
 /* ========= NUEVO: Fechas de fines de semana + bloques horarios ========= */
-const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];  // edítalo si amplías rangos
+const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];  // puedes agregar más aquí
 const MONTHS_ABR = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
 const WEEKDAYS_ABR = ["dom","lun","mar","mié","jue","vie","sáb"];
 
@@ -321,7 +321,7 @@ function DatosEntrega({state,setState, errors={}}){
             />
           </div>
 
-          {/* ===== NUEVO: Fecha (solo sábados y domingos) + Horario por bloques ===== */}
+          {/* ===== NUEVO: Fecha (solo sábados y domingos) + Horario por LISTA ===== */}
           <div className="grid grid-cols-2 gap-2">
             <div id="field-fecha">
               <label className="text-sm font-medium">Fecha de entrega</label>
@@ -344,30 +344,17 @@ function DatosEntrega({state,setState, errors={}}){
 
             <div id="field-hora">
               <label className="text-sm font-medium">Horario de entrega</label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {TIME_SLOTS.map(slot=>{
-                  const active = hora===slot;
-                  return (
-                    <label key={slot}
-                      className={
-                        "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm cursor-pointer transition " +
-                        (active ? "border-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,0.15)]" : "border-slate-300 hover:border-amber-400")
-                      }
-                    >
-                      <input
-                        type="radio"
-                        name="wk-slot"
-                        value={slot}
-                        checked={active}
-                        onChange={()=>set('hora', slot)}
-                        className="hidden"
-                      />
-                      {slot}
-                    </label>
-                  );
-                })}
-              </div>
-              {/* (mensaje eliminado por pedido del cliente) */}
+              <select
+                value={hora||""}
+                onChange={e=>set('hora', e.target.value)}
+                aria-invalid={!!errors.hora}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[var(--wk-title-red)]" : "border-slate-300")}
+              >
+                <option value="" disabled>Elige intervalo…</option>
+                {TIME_SLOTS.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
               {errors.hora && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.hora}</div>}
             </div>
           </div>
@@ -1180,4 +1167,5 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 
