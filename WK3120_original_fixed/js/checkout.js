@@ -60,6 +60,30 @@ async function registrarPedidoGSheet(payload) {
   }
 }
 
+/* ===== Compresión de imagen (para acelerar el upload del voucher) ===== */
+async function compressImage(file, maxW=1600, maxH=1600, quality=0.75){
+  const img = document.createElement('img');
+  const url = URL.createObjectURL(file);
+  await new Promise(res => { img.onload = res; img.src = url; });
+  let { naturalWidth: w, naturalHeight: h } = img;
+  let nw = w, nh = h;
+  if (w > maxW || h > maxH){
+    const r = Math.min(maxW/w, maxH/h);
+    nw = Math.round(w*r); nh = Math.round(h*r);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = nw; canvas.height = nh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, nw, nh);
+  return new Promise(res=>{
+    canvas.toBlob(b=>{
+      const compressed = new File([b], file.name.replace(/\.\w+$/, '.jpg'), { type:'image/jpeg' });
+      URL.revokeObjectURL(url);
+      res(compressed);
+    }, 'image/jpeg', quality);
+  });
+}
+
 function HeaderMini({onSeguir}){
   return (
     <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
@@ -735,7 +759,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     setError("");
     try{
       const objURL=URL.createObjectURL(f);
-      onVoucherSelect?.(f, objURL);
+      await onVoucherSelect?.(f, objURL); // <- await por si se comprime
     }catch(_){}
   }
 
@@ -1033,7 +1057,20 @@ function App(){
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
-  function onVoucherSelect(file, previewUrl){ setVoucherFile(file); setVoucherPreview(previewUrl || ""); setVoucherErr(""); }
+  // ===== Cambiado: comprimir antes de guardar (mantiene link en WA) =====
+  async function onVoucherSelect(file, previewUrl){
+    const THRESHOLD = 1.2 * 1024 * 1024; // ~1.2MB
+    let toUpload = file;
+    try{
+      if (file && file.size > THRESHOLD) {
+        toUpload = await compressImage(file, 1600, 1600, 0.75);
+      }
+    }catch(_){ /* si falla compresión, seguimos con el original */ }
+
+    setVoucherFile(toUpload);
+    setVoucherPreview(previewUrl || "");
+    setVoucherErr("");
+  }
   function onVoucherClear(){ setVoucherFile(null); setVoucherPreview(""); }
 
   async function subirVoucherAhora(file){
@@ -1112,8 +1149,11 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
+  // ===== Estado de envío para botón "Redirigiendo…" + spinner =====
+  const [sending, setSending] = useState(false);
+
   // Click del CTA
-  function handleEnviarClick(){
+  async function handleEnviarClick(){
     const errs = validateDelivery(state);
     const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
 
@@ -1136,7 +1176,12 @@ function App(){
       toast("Completar datos de entrega y subir voucher de pago");
       return;
     }
-    enviar();
+    try{
+      setSending(true);
+      await enviar();
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -1157,9 +1202,18 @@ function App(){
         <button
           type="button"
           onClick={handleEnviarClick}
-          className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700]"
+          disabled={sending}
+          className="w-full btn-pill font-bold text-white bg-gradient-to-r from-[#b32b11] to-[#6c1e00] hover:from-[#9f240f] hover:to-[#5a1700] disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Enviar pedido por WhatsApp
+          {sending ? (
+            <span className="inline-flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-75"></path>
+              </svg>
+              Redirigiendo…
+            </span>
+          ) : "Enviar pedido por WhatsApp"}
         </button>
       </section>
     </div>
@@ -1167,5 +1221,4 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
 
