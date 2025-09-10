@@ -150,7 +150,7 @@ function PhoneInput({value,onChange,error}){
   );
 }
 
-const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
+const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia", "San Martin de Porres", "Carabyllo"];
 
 /* ========= NUEVO: Fechas de fines de semana + bloques horarios ========= */
 const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];  // puedes agregar más aquí
