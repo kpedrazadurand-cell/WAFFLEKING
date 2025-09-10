@@ -7,7 +7,7 @@ const QR="assets/yape-qr.png";
 const YAPE="957285316";
 const NOMBRE_TITULAR="Kevin R. Pedraza D.";
 const WHA="51957285316";
-const DELIVERY=7;
+const DELIVERY=5;
 
 /* ===================== CLOUDINARY (unsigned) ===================== */
 const CLOUDINARY_CLOUD = "dw35nct1h";
