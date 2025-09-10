@@ -128,6 +128,38 @@ function PhoneInput({value,onChange,error}){
 
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia"];
 
+/* ========= NUEVO: Fechas de fines de semana + bloques horarios ========= */
+const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];  // edítalo si amplías rangos
+const MONTHS_ABR = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
+const WEEKDAYS_ABR = ["dom","lun","mar","mié","jue","vie","sáb"];
+
+/** Genera próximos sábados y domingos (n fines de semana => 2n opciones) */
+function getUpcomingWeekendOptions(nWeekends=8){
+  const out = [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // empieza desde el próximo sábado o domingo (incluye hoy si es fin de semana)
+  let d = new Date(today);
+  while (d.getDay() !== 6 && d.getDay() !== 0) d.setDate(d.getDate()+1);
+
+  while (out.length < nWeekends*2){
+    if ((d.getDay()===6 || d.getDay()===0) && d >= today){
+      const label = `${cap(WEEKDAYS_ABR[d.getDay()])} ${d.getDate()} ${MONTHS_ABR[d.getMonth()]}`;
+      out.push({
+        dateISO: d.toISOString().slice(0,10),
+        label,
+        fullLabel: d.toLocaleDateString("es-PE", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
+      });
+    }
+    // si fue sábado -> +1 día (domingo), si fue domingo -> +6 días (siguiente sábado)
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (d.getDay()===6 ? 1 : 6));
+  }
+  return out;
+}
+function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+/* ========= UI: Datos de entrega (con nuevo selector de fecha/horario) ========= */
 function DatosEntrega({state,setState, errors={}}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
@@ -145,6 +177,15 @@ function DatosEntrega({state,setState, errors={}}){
 
   const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
+
+  // opciones calculadas una sola vez
+  const weekendOptionsRef = useRef(getUpcomingWeekendOptions(8));
+  const weekendOptions = weekendOptionsRef.current;
+
+  const selectedLabel = React.useMemo(()=>{
+    const opt = weekendOptions.find(o=>o.dateISO===fecha);
+    return opt ? opt.label : "";
+  }, [fecha, weekendOptions]);
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
@@ -280,31 +321,63 @@ function DatosEntrega({state,setState, errors={}}){
             />
           </div>
 
-          {/* Fecha y Hora */}
+          {/* ===== NUEVO: Fecha (solo sábados y domingos) + Horario por bloques ===== */}
           <div className="grid grid-cols-2 gap-2">
             <div id="field-fecha">
               <label className="text-sm font-medium">Fecha de entrega</label>
-              <input
-                type="date"
+              <select
                 value={fecha||""}
-                onChange={e=>set('fecha',e.target.value)}
+                onChange={e=>set('fecha', e.target.value)}
                 aria-invalid={!!errors.fecha}
                 className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[var(--wk-title-red)]" : "border-slate-300")}
-              />
+                title={selectedLabel ? `(${selectedLabel})` : "Elige sábado o domingo"}
+              >
+                <option value="" disabled>Elige sábado o domingo…</option>
+                {weekendOptions.map(opt=>(
+                  <option key={opt.dateISO} value={opt.dateISO} title={opt.fullLabel}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
               {errors.fecha && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.fecha}</div>}
             </div>
+
             <div id="field-hora">
-              <label className="text-sm font-medium">Hora</label>
-              <input
-                type="time"
-                value={hora||""}
-                onChange={e=>set('hora',e.target.value)}
-                aria-invalid={!!errors.hora}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[var(--wk-title-red)]" : "border-slate-300")}
-              />
+              <label className="text-sm font-medium">Horario de entrega</label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {TIME_SLOTS.map(slot=>{
+                  const active = hora===slot;
+                  return (
+                    <label key={slot}
+                      className={
+                        "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm cursor-pointer transition " +
+                        (active ? "border-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,0.15)]" : "border-slate-300 hover:border-amber-400")
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="wk-slot"
+                        value={slot}
+                        checked={active}
+                        onChange={()=>set('hora', slot)}
+                        className="hidden"
+                      />
+                      {slot}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-slate-600 mt-1">Agrupamos pedidos por bloques para optimizar el delivery 💨</div>
               {errors.hora && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.hora}</div>}
             </div>
           </div>
+
+          {/* Resumen visual (opcional) */}
+          {(fecha && hora) && (
+            <div className="text-xs mt-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 inline-block">
+              Entrega: <b>{selectedLabel}</b> · <b>{hora}</b>
+            </div>
+          )}
         </div>
       </div>
     </section>
