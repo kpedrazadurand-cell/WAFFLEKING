@@ -152,21 +152,17 @@ function PhoneInput({value,onChange,error}){
 
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia", "San Martin de Porres", "Carabyllo"];
 
-/* ========= NUEVO: Fechas de fines de semana + bloques horarios ========= */
-const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];  // puedes agregar más aquí
+/* ========= Fechas de fines de semana + bloques horarios ========= */
+const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];
 const MONTHS_ABR = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
 const WEEKDAYS_ABR = ["dom","lun","mar","mié","jue","vie","sáb"];
 
-/** Genera próximos sábados y domingos (n fines de semana => 2n opciones) */
 function getUpcomingWeekendOptions(nWeekends=8){
   const out = [];
   const today = new Date();
   today.setHours(0,0,0,0);
-
-  // empieza desde el próximo sábado o domingo (incluye hoy si es fin de semana)
   let d = new Date(today);
   while (d.getDay() !== 6 && d.getDay() !== 0) d.setDate(d.getDate()+1);
-
   while (out.length < nWeekends*2){
     if ((d.getDay()===6 || d.getDay()===0) && d >= today){
       const label = `${cap(WEEKDAYS_ABR[d.getDay()])} ${d.getDate()} ${MONTHS_ABR[d.getMonth()]}`;
@@ -176,14 +172,13 @@ function getUpcomingWeekendOptions(nWeekends=8){
         fullLabel: d.toLocaleDateString("es-PE", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
       });
     }
-    // si fue sábado -> +1 día (domingo), si fue domingo -> +6 días (siguiente sábado)
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (d.getDay()===6 ? 1 : 6));
   }
   return out;
 }
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-/* ========= UI: Datos de entrega (con nuevo selector de fecha/horario) ========= */
+/* ========= UI: Datos de entrega (sin “Mi ubicación” ni “Link de Google Maps”) ========= */
 function DatosEntrega({state,setState, errors={}}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
@@ -199,10 +194,9 @@ function DatosEntrega({state,setState, errors={}}){
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
   },[state, hydrated]);
 
-  const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
+  const {nombre,telefono,distrito,direccion,referencia,fecha,hora}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
-  // opciones calculadas una sola vez
   const weekendOptionsRef = useRef(getUpcomingWeekendOptions(8));
   const weekendOptions = weekendOptionsRef.current;
 
@@ -214,7 +208,6 @@ function DatosEntrega({state,setState, errors={}}){
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        {/* subtítulo rojo vino + bold */}
         <h3 className="font-bold text-[var(--wk-title-red)] mb-2">Datos de entrega</h3>
         <div className="space-y-2">
           {/* Nombre */}
@@ -236,74 +229,17 @@ function DatosEntrega({state,setState, errors={}}){
             {errors.telefono && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.telefono}</div>}
           </div>
 
-          {/* Dirección + Mi ubicación */}
+          {/* Dirección */}
           <div id="field-direccion">
             <label className="text-sm font-medium">Dirección</label>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1">
               <input
                 value={direccion||""}
                 onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt"
                 aria-invalid={!!errors.direccion}
-                className={"flex-1 min-w-0 rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
+                className={"w-full rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               />
-              <button
-                type="button"
-                onClick={async ()=>{
-                  if (!('geolocation' in navigator)) { toast('Tu navegador no soporta ubicación.'); return; }
-                  toast('Obteniendo ubicación…');
-                  try{
-                    const getPos=(opts)=>new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,opts));
-                    let pos;
-                    try{ pos = await getPos({ enableHighAccuracy:true, timeout:8000, maximumAge:0 }); }
-                    catch(e){ if(e && e.code===3){ pos = await getPos({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 }); } else throw e; }
-                    const {latitude:lat, longitude:lng}=pos.coords;
-                    const mapsURL = `https://www.google.com/maps?q=${lat},${lng}`;
-
-                    let finalDireccion = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                    try{
-                      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-                      const res = await fetch(url, { headers: { 'Accept':'application/json' } });
-                      const data = await res.json();
-                      if(data){
-                        if (data.address){
-                          const a = data.address;
-                          const linea1 = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-                          const zona   = (a.neighbourhood || a.suburb || a.city_district || '').trim();
-                          const ciudad = (a.city || a.town || a.village || a.county || '').trim();
-                          const region = (a.state || '').trim();
-                          const cp     = (a.postcode || '').trim();
-                          const partes = [linea1, zona, ciudad, region, cp].filter(Boolean);
-                          if (partes.length) finalDireccion = partes.join(', ');
-                        }
-                        if (!finalDireccion && data.display_name) finalDireccion = data.display_name;
-                      }
-                    }catch(_){}
-
-                    set('direccion', finalDireccion);
-                    set('mapLink', mapsURL);
-                    toast('Ubicación detectada ✓');
-                  }catch(err){
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    if (err && err.code === 1) {
-                      toast(isIOS
-                        ? 'Permiso denegado. Ajustes ▸ Privacidad ▸ Localización ▸ Safari: permitir + “Ubicación precisa”.'
-                        : 'Permiso denegado. Revisa los permisos de ubicación del navegador.');
-                    } else if (err && err.code === 2) {
-                      toast('Posición no disponible. Activa GPS o prueba en exterior.');
-                    } else if (err && err.code === 3) {
-                      toast('Tiempo de espera agotado. Intenta nuevamente cerca de una ventana.');
-                    } else {
-                      toast('Error de ubicación. Intenta de nuevo.');
-                    }
-                  }
-                }}
-                className="shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm"
-                title="Usar mi ubicación actual"
-                style={{ background:'var(--wk-cream)', borderColor:'var(--wk-gold)', color:'#111' }}
-              >
-                📍 Mi ubicación
-              </button>
             </div>
             {errors.direccion && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
           </div>
@@ -334,18 +270,7 @@ function DatosEntrega({state,setState, errors={}}){
             />
           </div>
 
-          {/* Link Maps (opcional) */}
-          <div>
-            <label className="text-sm font-medium">Link de Google Maps (opcional)</label>
-            <input
-              value={mapLink||""}
-              onChange={e=>set('mapLink',e.target.value)}
-              placeholder="Pega tu link"
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-            />
-          </div>
-
-          {/* ===== NUEVO: Fecha (solo sábados y domingos) + Horario por LISTA ===== */}
+          {/* Fecha + Horario */}
           <div className="grid grid-cols-2 gap-2">
             <div id="field-fecha">
               <label className="text-sm font-medium">Fecha de entrega</label>
@@ -383,7 +308,6 @@ function DatosEntrega({state,setState, errors={}}){
             </div>
           </div>
 
-          {/* Resumen visual (opcional) */}
           {(fecha && hora) && (
             <div className="text-xs mt-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 inline-block">
               Entrega: <b>{selectedLabel}</b> · <b>{hora}</b>
@@ -661,7 +585,6 @@ function CartList({cart, setCart, canCalc}){
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <div className="flex items-center justify-between mb-2">
-          {/* subtítulo rojo vino + bold */}
           <h3 className="font-bold text-[var(--wk-title-red)]">Resumen de tu compra</h3>
           {cart.length>0 && <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
             {openAll?"Ocultar detalle":"Mostrar detalle"}
@@ -685,7 +608,6 @@ function CartList({cart, setCart, canCalc}){
 
               {openAll && (
                 <div className="mt-3 text-xs text-slate-700 grid sm:grid-cols-3 gap-3">
-                  {/* Masa */}
                   <div className="sm:col-span-3">
                     <div className="font-semibold">Masa</div>
                     <div>{
@@ -759,7 +681,7 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     setError("");
     try{
       const objURL=URL.createObjectURL(f);
-      await onVoucherSelect?.(f, objURL); // <- await por si se comprime
+      await onVoucherSelect?.(f, objURL);
     }catch(_){}
   }
 
@@ -796,7 +718,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {Logos}
-            {/* subtítulo rojo vino + bold */}
             <h4 className="font-bold text-[var(--wk-title-red)]">Forma de pago</h4>
           </div>
 
@@ -828,7 +749,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
 
           {!voucherPreview ? (
-            /* "Subir voucher" */
             <button
               type="button"
               onClick={abrirPicker}
@@ -881,12 +801,11 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 function buildWhatsApp(cart,state,total, voucherUrl=""){
   const L=[];
   if(cart.length===0){ return null; }
-  const {nombre,telefono,distrito,direccion,referencia,mapLink,fecha,hora}=state;
+  const {nombre,telefono,distrito,direccion,referencia,fecha,hora}=state;
   if(!nombre || !telefono || telefono.length!==9 || !distrito || !direccion){ return false; }
 
   const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
-  const mapsAuto = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
-  const mapsURL = (mapLink && mapLink.trim().length>0) ? mapLink.trim() : mapsAuto;
+  const mapsURL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
 
   const telFmt = `+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
 
@@ -910,7 +829,7 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
   L.push(`Dirección: ${distrito} — ${direccion}`);
   if(referencia) L.push("Referencia: "+referencia);
-  L.push("Google Maps: "+(mapLink?.trim()?mapLink.trim():mapsURL));
+  L.push("Google Maps: "+mapsURL);
 
   const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
   L.push("");
@@ -936,8 +855,8 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       telefono:   state?.telefono || '',
       distrito:   state?.distrito || '',
       direccion:  state?.direccion || '',
-      referencia: state?.referencia || '',
-      mapLink:    state?.mapLink || ''
+      referencia: state?.referencia || ''
+      // (mapLink eliminado)
     },
     programado: { 
       fecha: state?.fecha || '', 
@@ -952,7 +871,7 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       metodo:  'Yape/Plin', 
       numero:  YAPE, 
       titular: NOMBRE_TITULAR, 
-      link:    voucherUrl || ''    // link del comprobante
+      link:    voucherUrl || ''
     },
     items: (cart || []).map(it => ({
       name:       it.name,
@@ -960,12 +879,12 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
       unitPrice:  Number(it.unitPrice || 0),
       masa:       it.masa || it.masaName || '',
       toppings:   it.toppings || [],
-      siropes:    it.siropes  || [],  // strings u objetos {name, extra}
-      premium:    it.premium  || [],  // strings u objetos {name, qty}
+      siropes:    it.siropes  || [],
+      premium:    it.premium  || [],
       recipient:  it.recipient || '',
       notes:      it.notes || ''
     })),
-    pagoLink: voucherUrl || '',  // alias
+    pagoLink: voucherUrl || '',
     whatsAppText
   };
 }
@@ -975,11 +894,10 @@ function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({
     nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",
-    direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",mapLink:savedDelivery.mapLink||"",
+    direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",
     fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
   });
 
-  // errores formulario + voucher
   const [errors, setErrors] = useState({});
   const [voucherErr, setVoucherErr] = useState("");
 
@@ -1057,16 +975,14 @@ function App(){
   const canCalc = !!(state.distrito && state.direccion);
   const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
 
-  // ===== Cambiado: comprimir antes de guardar (mantiene link en WA) =====
   async function onVoucherSelect(file, previewUrl){
-    const THRESHOLD = 1.2 * 1024 * 1024; // ~1.2MB
+    const THRESHOLD = 1.2 * 1024 * 1024;
     let toUpload = file;
     try{
       if (file && file.size > THRESHOLD) {
         toUpload = await compressImage(file, 1600, 1600, 0.75);
       }
-    }catch(_){ /* si falla compresión, seguimos con el original */ }
-
+    }catch(_){}
     setVoucherFile(toUpload);
     setVoucherPreview(previewUrl || "");
     setVoucherErr("");
@@ -1085,7 +1001,6 @@ function App(){
     return data.secure_url;
   }
 
-  // ====== ENVIAR ======
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
 
@@ -1118,7 +1033,7 @@ function App(){
         subtotal,
         total,
         whatsAppText: decodeURIComponent(text),
-        voucherUrl   // link del comprobante
+        voucherUrl
       });
       console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
       const ok = await registrarPedidoGSheet(payload);
@@ -1149,10 +1064,8 @@ function App(){
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
-  // ===== Estado de envío para botón "Redirigiendo…" + spinner =====
   const [sending, setSending] = useState(false);
 
-  // Click del CTA
   async function handleEnviarClick(){
     const errs = validateDelivery(state);
     const vErr = voucherFile ? "" : "Falta adjuntar voucher de pago";
@@ -1198,7 +1111,6 @@ function App(){
         voucherErr={voucherErr}
       />
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
-        {/* CTA */}
         <button
           type="button"
           onClick={handleEnviarClick}
