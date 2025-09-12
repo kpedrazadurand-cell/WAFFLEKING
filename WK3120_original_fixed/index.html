@@ -6,27 +6,11 @@
   <title>Waffle King — Arma tu pedido</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
-  <!-- ====== Open Graph / Vista previa WhatsApp ====== -->
-  <!-- Asegúrate que esta imagen exista en producción: /assets/presentacion.jpg -->
-  <meta property="og:title" content="Waffle King — ¡Nos renovamos para ti!" />
-  <meta property="og:description" content="Nueva imagen, misma corona. Waffles premium con delivery hoy. Yape/Plin. ¡Ordénalos en 1 minuto!" />
-  <meta property="og:image" content="https://wafflekingentregas.netlify.app/assets/presentacion.jpg" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Waffle King — Presentación renovada" />
-  <meta property="og:url" content="https://wafflekingentregas.netlify.app/" />
-  <meta property="og:type" content="website" />
-  <meta property="og:locale" content="es_PE" />
-  <meta name="twitter:card" content="summary_large_image" />
-
-  <!-- (Opcional) canónica -->
-  <link rel="canonical" href="https://wafflekingentregas.netlify.app/" />
-
   <!-- Preloads (mejor LCP sin cambiar diseño) -->
   <link rel="preload" as="image" href="assets/logo.png">
   <link rel="preload" as="image" href="assets/welcome-poster.jpg">
 
-  <!-- libs (orden importante: tailwind -> react -> react-dom -> babel) -->
+  <!-- libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -37,13 +21,13 @@
     :root{
       --wk-brown-deep:#3a1104;   /* encabezado + tonos oscuros */
       --wk-gold:#c28432;         /* dorado (bordes / acentos) */
-      --wk-cream:#fff0d6;        /* crema (fondo) */
+      --wk-cream:#fff0d6;        /* crema (fondo de página y pill) */
       --wk-title-red:#b32b11;    /* rojo de los títulos */
     }
 
     body{
       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
-      background: var(--wk-cream);
+      background: var(--wk-cream);   /* fondo crema */
       min-height:100vh;
     }
 
@@ -63,17 +47,20 @@
       color:#111 !important;
     }
 
-    /* Carrito y badge */
+    /* Carrito (botón) y badge */
     header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
     header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
 
+    /* Botón del carrito: fondo crema + borde dorado (no cambiar) */
     header.glass button[aria-label="Ir al carrito"]{
       background: var(--wk-cream) !important;
       border: 2px solid var(--wk-gold) !important;
     }
     header.glass button[aria-label="Ir al carrito"]:hover{
-      background:#ffe9c0 !important;
+      background:#ffe9c0 !important; /* crema un poco más oscuro al hover */
     }
+
+    /* Badge del número: rojo de títulos + texto blanco */
     header.glass button[aria-label="Ir al carrito"] > span{
       background: var(--wk-title-red) !important;
       color:#fff !important;
@@ -81,7 +68,7 @@
       border:1px solid var(--wk-cream);
     }
 
-    /* Cards blancas */
+    /* ===== Cards blancas: mismo borde que la pill ===== */
     main .rounded-2xl.bg-white.border,
     section .rounded-2xl.bg-white.border{
       border-color: var(--wk-gold) !important;
@@ -93,7 +80,7 @@
     .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
     .btn-disabled{opacity:.5;cursor:not-allowed}
 
-    /* TOAST */
+    /* ===== TOAST: marrón del header ===== */
     .toast{
       position:fixed; bottom:16px; left:50%;
       transform:translate(-50%,16px);
@@ -117,24 +104,7 @@
   <div id="root"></div>
   <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
 
-  <!-- App React (compilada en cliente por Babel) -->
+  <!-- Mantengo Babel en cliente como tu versión original -->
   <script type="text/babel" src="js/index.js"></script>
-
-  <!-- Fallback visible si React no monta en 3s (p.ej. error de ruta js/index.js) -->
-  <script>
-    (function(){
-      const start = Date.now();
-      setTimeout(function(){
-        const root = document.getElementById('root');
-        if (root && !root.firstChild) {
-          root.innerHTML =
-            '<div style="padding:24px;text-align:center;font-family:ui-sans-serif">'+
-            '<h2 style="font-weight:800;color:#3a1104">Cargando…</h2>'+
-            '<p style="margin-top:8px;color:#333">Si esto no avanza, revisa que <code>js/index.js</code> exista y que no tenga errores.</p>'+
-            '</div>';
-        }
-      }, 3000);
-    })();
-  </script>
 </body>
 </html>
