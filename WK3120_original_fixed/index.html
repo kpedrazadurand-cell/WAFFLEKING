@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -5,12 +7,13 @@
   <link rel="icon" type="image/png" href="assets/logo.png" />
 
   <!-- ====== Open Graph / Vista previa WhatsApp ====== -->
+  <!-- Asegúrate que esta imagen exista en producción: /assets/presentacion.jpg -->
   <meta property="og:title" content="Waffle King — ¡Nos renovamos para ti!" />
   <meta property="og:description" content="Nueva imagen, misma corona. Waffles premium con delivery hoy. Yape/Plin. ¡Ordénalos en 1 minuto!" />
   <meta property="og:image" content="https://wafflekingentregas.netlify.app/assets/presentacion.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Waffle King — Presentación renovada con waffle y corona" />
+  <meta property="og:image:alt" content="Waffle King — Presentación renovada" />
   <meta property="og:url" content="https://wafflekingentregas.netlify.app/" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="es_PE" />
@@ -23,38 +26,115 @@
   <link rel="preload" as="image" href="assets/logo.png">
   <link rel="preload" as="image" href="assets/welcome-poster.jpg">
 
-  <!-- libs -->
+  <!-- libs (orden importante: tailwind -> react -> react-dom -> babel) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
+    /* ===== Paleta unificada ===== */
     :root{
-      --wk-brown-deep:#3a1104;
-      --wk-gold:#c28432;
-      --wk-cream:#fff0d6;
-      --wk-title-red:#b32b11;
+      --wk-brown-deep:#3a1104;   /* encabezado + tonos oscuros */
+      --wk-gold:#c28432;         /* dorado (bordes / acentos) */
+      --wk-cream:#fff0d6;        /* crema (fondo) */
+      --wk-title-red:#b32b11;    /* rojo de los títulos */
     }
-    body{ font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto; background:var(--wk-cream); min-height:100vh; }
-    header.glass{ background:var(--wk-brown-deep)!important; color:#fff!important; backdrop-filter:none!important; border-bottom:0!important;}
-    header.glass h1, header.glass p{ color:#fff!important; }
-    header.glass .rounded-full{ background:var(--wk-cream)!important; border:2px solid var(--wk-gold)!important; color:#111!important; }
-    header.glass .border-amber-300{ border-color:var(--wk-gold)!important; }
-    header.glass .hover\:bg-amber-50:hover{ background:rgba(255,255,255,.08)!important; }
-    header.glass button[aria-label="Ir al carrito"]{ background:var(--wk-cream)!important; border:2px solid var(--wk-gold)!important; }
-    header.glass button[aria-label="Ir al carrito"]:hover{ background:#ffe9c0!important; }
-    header.glass button[aria-label="Ir al carrito"]>span{ background:var(--wk-title-red)!important; color:#fff!important; font-weight:700; border:1px solid var(--wk-cream);}
-    main .rounded-2xl.bg-white.border, section .rounded-2xl.bg-white.border{ border-color:var(--wk-gold)!important; border-width:2px!important; }
-    .shadow-soft{ box-shadow:0 12px 32px rgba(31,41,55,.08) }
-    .btn-pill{ border-radius:9999px; padding:.6rem 1.1rem; font-weight:600 }
-    .btn-disabled{ opacity:.5; cursor:not-allowed }
+
+    body{
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto;
+      background: var(--wk-cream);
+      min-height:100vh;
+    }
+
+    /* Header marrón intenso + texto blanco */
+    header.glass{
+      background: var(--wk-brown-deep) !important;
+      color:#fff !important;
+      backdrop-filter:none !important;
+      border-bottom:0 !important;
+    }
+    header.glass h1, header.glass p{ color:#fff !important; }
+
+    /* Pill “Pedidos con 24h…” */
+    header.glass .rounded-full{
+      background: var(--wk-cream) !important;
+      border: 2px solid var(--wk-gold) !important;
+      color:#111 !important;
+    }
+
+    /* Carrito y badge */
+    header.glass .border-amber-300{ border-color: var(--wk-gold) !important; }
+    header.glass .hover\:bg-amber-50:hover{ background: rgba(255,255,255,.08) !important; }
+
+    header.glass button[aria-label="Ir al carrito"]{
+      background: var(--wk-cream) !important;
+      border: 2px solid var(--wk-gold) !important;
+    }
+    header.glass button[aria-label="Ir al carrito"]:hover{
+      background:#ffe9c0 !important;
+    }
+    header.glass button[aria-label="Ir al carrito"] > span{
+      background: var(--wk-title-red) !important;
+      color:#fff !important;
+      font-weight:700;
+      border:1px solid var(--wk-cream);
+    }
+
+    /* Cards blancas */
+    main .rounded-2xl.bg-white.border,
+    section .rounded-2xl.bg-white.border{
+      border-color: var(--wk-gold) !important;
+      border-width: 2px !important;
+    }
+
+    /* Utilería */
+    .shadow-soft{box-shadow:0 12px 32px rgba(31,41,55,.08)}
+    .btn-pill{border-radius:9999px;padding:.6rem 1.1rem;font-weight:600}
+    .btn-disabled{opacity:.5;cursor:not-allowed}
+
+    /* TOAST */
     .toast{
-      position:fixed; bottom:16px; left:50%; transform:translate(-50%,16px);
-      background:var(--wk-brown-deep); color:#fff; border:2px solid var(--wk-gold);
-      padding:10px 14px; border-radius:9999px; font-weight:700;
-      box-shadow:0 10px 20px rgba(58,17,4,.28); opacity:0; transition:all .25s; z-index:2000; pointer-events:none;
+      position:fixed; bottom:16px; left:50%;
+      transform:translate(-50%,16px);
+      background:var(--wk-brown-deep);
+      color:#fff;
+      border:2px solid var(--wk-gold);
+      padding:10px 14px;
+      border-radius:9999px;
+      font-weight:700;
+      box-shadow:0 10px 20px rgba(58,17,4,.28);
+      opacity:0;
+      transition:all .25s;
+      z-index:2000;
+      pointer-events:none;
     }
-    .toast.show{ opacity:1; transform:translate(-50%,0) }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
   </style>
 </head>
+
+<body>
+  <div id="root"></div>
+  <div id="toast" class="toast">Debes seleccionar un waffle para continuar</div>
+
+  <!-- App React (compilada en cliente por Babel) -->
+  <script type="text/babel" src="js/index.js"></script>
+
+  <!-- Fallback visible si React no monta en 3s (p.ej. error de ruta js/index.js) -->
+  <script>
+    (function(){
+      const start = Date.now();
+      setTimeout(function(){
+        const root = document.getElementById('root');
+        if (root && !root.firstChild) {
+          root.innerHTML =
+            '<div style="padding:24px;text-align:center;font-family:ui-sans-serif">'+
+            '<h2 style="font-weight:800;color:#3a1104">Cargando…</h2>'+
+            '<p style="margin-top:8px;color:#333">Si esto no avanza, revisa que <code>js/index.js</code> exista y que no tenga errores.</p>'+
+            '</div>';
+        }
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>
