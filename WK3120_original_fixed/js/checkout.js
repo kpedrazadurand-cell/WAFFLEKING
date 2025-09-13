@@ -4,9 +4,9 @@ const {useState,useEffect,useRef} = React;
 // ======= CHECKOUT COMPLETO =======
 const LOGO="assets/logo.png";
 const QR="assets/yape-qr.png";
-const YAPE="957285316";
-const NOMBRE_TITULAR="Kevin R. Pedraza D.";
-const WHA="51957285316";
+const YAPE="942504978";
+const NOMBRE_TITULAR="Sheila M. Sánchez T.";
+const WHA="51942504978";
 const DELIVERY=5;
 
 /* ===================== CLOUDINARY (unsigned) ===================== */
