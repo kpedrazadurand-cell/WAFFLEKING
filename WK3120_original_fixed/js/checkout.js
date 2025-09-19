@@ -208,7 +208,7 @@ function PhoneInput({value,onChange,error}){
 }
 
 /* ===== Distritos (cambio de nombre solicitado) ===== */
-const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabyllo"];
+const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabayllo"];
 
 /* ========= Fechas de fines de semana + bloques horarios ========= */
 const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];
