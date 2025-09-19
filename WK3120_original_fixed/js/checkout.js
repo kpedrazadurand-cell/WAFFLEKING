@@ -15,7 +15,7 @@ const STORE_DISTRICT = "Puente Piedra";
 const STORE_REF      = "Parque la Ribera del Chillon...";
 const STORE_MAPS     = "https://maps.app.goo.gl/oGuctx4EiKcMfQrJA?g_st=awb";
 
-/* ===== Distritos (solo los que ya tenías) ===== */
+/* ===== Distritos (solo los del norte) ===== */
 const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabyllo"];
 
 // Delivery fee: 0 para recojo, 5 para delivery
@@ -906,6 +906,17 @@ function buildWhatsApp(cart,state,subtotal,total,deliveryFee, voucherUrl=""){
   return encodeURIComponent(L.join("\n"));
 }
 
+/* ====== Deep links WhatsApp (Android/iOS) ====== */
+function buildWaLinks(phone, encodedText){
+  const waWeb = `https://wa.me/${phone}?text=${encodedText}`;
+  const waApp = `whatsapp://send?phone=${phone}&text=${encodedText}`;
+  const waIntentAndroid =
+    `intent://send?phone=${phone}&text=${encodedText}` +
+    `#Intent;scheme=whatsapp;package=com.whatsapp;` +
+    `S.browser_fallback_url=${encodeURIComponent(waWeb)};end`;
+  return { waWeb, waApp, waIntentAndroid };
+}
+
 /* ==================== Helpers a Sheets ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, deliveryFee, whatsAppText, voucherUrl = ""}) {
   return {
@@ -1030,7 +1041,7 @@ function App(){
     return ()=>window.removeEventListener('beforeunload', handler);
   },[state]);
 
-  // >>> FIX: limpiar errores de direccion/distrito al pasar a pickup
+  // Limpia errores de dirección/distrito al pasar a pickup
   useEffect(()=>{
     if(state.deliveryMethod === "pickup"){
       setErrors(prev => {
@@ -1040,7 +1051,6 @@ function App(){
       });
     }
   }, [state.deliveryMethod]);
-  // <<< FIX
 
   function seguirComprando(){
     try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
@@ -1078,10 +1088,16 @@ function App(){
     return data.secure_url;
   }
 
+  // ===== Apertura WhatsApp mejorada (Android/iOS) =====
   async function enviar(){
     if(cart.length===0){ toast("Agrega al menos un producto"); return; }
 
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const ua = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(ua);
+    const isIOS     = /iPhone|iPad|iPod/i.test(ua);
+    const isMobile  = /Android|iPhone|iPad|iPod/i.test(ua);
+
+    // Desktop: abrimos una pestaña en blanco ANTES (para evitar bloqueos de popups)
     const preWin = !isMobile ? window.open('', '_blank') : null;
 
     let voucherUrl = "";
@@ -1095,11 +1111,16 @@ function App(){
 
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
-    const text=buildWhatsApp(cart,effective,subtotal,total,deliveryFee,voucherUrl);
-    if(text===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
-    if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
 
-    const waWeb = `https://api.whatsapp.com/send?phone=${WHA}&text=${text}`;
+    const sub = cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
+    const fee = feeForState(effective);
+    const tot = sub + fee;
+
+    const textEncoded = buildWhatsApp(cart,effective,sub,tot,fee,voucherUrl);
+    if(textEncoded===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
+    if(textEncoded===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
+
+    const { waWeb, waApp, waIntentAndroid } = buildWaLinks(WHA, textEncoded);
 
     try {
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
@@ -1107,26 +1128,28 @@ function App(){
         orderId,
         cart,
         state: effective,
-        subtotal,
-        total,
-        deliveryFee,
-        whatsAppText: decodeURIComponent(text),
+        subtotal: sub,
+        total: tot,
+        deliveryFee: fee,
+        whatsAppText: decodeURIComponent(textEncoded),
         voucherUrl
       });
-      console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
       const ok = await registrarPedidoGSheet(payload);
-      console.log('[WK] registrarPedidoGSheet =>', ok);
       if (ok) toast('Pedido enviado a la hoja ✔');
       else toast('No se pudo enviar a la hoja');
     } catch (_e) {
       console.error('[WK] Error preparando envío a Sheets:', _e);
     }
 
-    if (isMobile) {
-      window.location.href = waWeb;
+    // Abrimos WhatsApp según plataforma
+    if (isAndroid) {
+      window.location.href = waIntentAndroid;           // suele abrir directo la app
+    } else if (isIOS) {
+      window.location.href = waApp;                     // intenta abrir la app
+      setTimeout(()=>{ try{ window.location.href = waWeb; }catch(_){} }, 600); // fallback silencioso
     } else {
-      if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
-      else { window.open(waWeb, "_blank"); }
+      if (preWin && !preWin.closed) preWin.location.href = waWeb;
+      else window.open(waWeb, "_blank");
     }
 
     try{
