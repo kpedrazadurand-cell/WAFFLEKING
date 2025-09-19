@@ -1030,6 +1030,18 @@ function App(){
     return ()=>window.removeEventListener('beforeunload', handler);
   },[state]);
 
+  // >>> FIX: limpiar errores de direccion/distrito al pasar a pickup
+  useEffect(()=>{
+    if(state.deliveryMethod === "pickup"){
+      setErrors(prev => {
+        if(!prev?.direccion && !prev?.distrito) return prev;
+        const { direccion, distrito, ...rest } = prev || {};
+        return rest;
+      });
+    }
+  }, [state.deliveryMethod]);
+  // <<< FIX
+
   function seguirComprando(){
     try{ localStorage.setItem('wk_delivery', JSON.stringify(state)); }catch(e){}
     location.href='index.html';
@@ -1199,4 +1211,3 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-
