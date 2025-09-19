@@ -262,7 +262,6 @@ function DatosEntrega({state,setState, errors={}}){
   }, [fecha, weekendOptions]);
 
   const isPickup = deliveryMethod==="pickup";
-  const currentFee = feeForState(state);
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
@@ -337,9 +336,6 @@ function DatosEntrega({state,setState, errors={}}){
                 {DISTRITOS_SUR.map(d=> <option key={"S-"+d} value={d}>{d}</option>)}
               </optgroup>
             </select>
-            {!isPickup && (distrito ?
-              <div className="text-xs text-amber-900 mt-1">Tarifa de delivery para {distrito}: <b>{soles(feeForDistrict(distrito))}</b></div>
-            : <div className="text-xs text-slate-600 mt-1">Zona Norte · Zonas Sur listadas </div>)}
             {errors.distrito && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
           </div>
 
@@ -364,10 +360,10 @@ function DatosEntrega({state,setState, errors={}}){
                 onChange={e=>set('fecha', e.target.value)}
                 aria-invalid={!!errors.fecha}
                 className={"mt-1 w-full rounded-lg border p-2 " + (errors.fecha ? "border-[var(--wk-title-red)]" : "border-slate-300")}
-                title={selectedLabel ? `(${selectedLabel})` : "Elige sábado o domingo"}
+                title="Elige sábado o domingo"
               >
                 <option value="" disabled>Elige sábado o domingo…</option>
-                {weekendOptions.map(opt=>(
+                {getUpcomingWeekendOptions(8).map(opt=>(
                   <option key={opt.dateISO} value={opt.dateISO} title={opt.fullLabel}>{opt.label}</option>
                 ))}
               </select>
@@ -391,7 +387,7 @@ function DatosEntrega({state,setState, errors={}}){
 
           {(fecha && hora) && (
             <div className="text-xs mt-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 inline-block">
-              Entrega: <b>{selectedLabel}</b> · <b>{hora}</b> {isPickup && <span>· Recojo en tienda</span>}
+              Entrega: <b>{getUpcomingWeekendOptions(8).find(o=>o.dateISO===fecha)?.label||fecha}</b> · <b>{hora}</b> {isPickup && <span>· Recojo en tienda</span>}
             </div>
           )}
         </div>
