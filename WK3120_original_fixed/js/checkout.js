@@ -9,6 +9,13 @@ const NOMBRE_TITULAR="Sheila M. Sánchez T.";
 const WHA="51942504978";
 const DELIVERY=5;
 
+// ========= Punto de recojo =========
+const STORE_NAME      = "Waffle King";
+const STORE_ADDR      = "La Ribera del Chillón Mz.P Lt.77";
+const STORE_DISTRICT  = "Puente Piedra";
+const STORE_REF       = "Parque la Ribera del Chillon...";
+const STORE_MAPS      = "https://maps.app.goo.gl/oGuctx4EiKcMfQrJA?g_st=awb";
+
 /* ===================== CLOUDINARY (unsigned) ===================== */
 const CLOUDINARY_CLOUD = "dw35nct1h";
 const CLOUDINARY_PRESET = "wk-payments";
@@ -110,15 +117,65 @@ function HeaderMini({onSeguir}){
   );
 }
 
-/* ===== Validador de entrega ===== */
+/* ===== Tarjetas tipo Rappi: método de entrega ===== */
+function DeliveryMethodCards({value="delivery", onChange}){
+  const isDelivery = value === "delivery";
+  const isPickup   = value === "pickup";
+  const base   = "flex-1 min-w-[220px] rounded-2xl border p-4 cursor-pointer transition shadow-soft";
+  const active = "border-[var(--wk-gold)] ring-2 ring-amber-200 bg-white";
+  const idle   = "border-slate-200 bg-white hover:border-amber-200 hover:shadow";
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Delivery */}
+      <div
+        className={`${base} ${isDelivery?active:idle}`}
+        onClick={()=>onChange("delivery")}
+        role="button" aria-pressed={isDelivery}
+      >
+        <div className="flex items-center gap-3">
+          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (isDelivery ? "bg-amber-600" : "bg-slate-500")}>🚚</div>
+          <div>
+            <div className="font-semibold">Delivery</div>
+            <div className="text-xs text-slate-600">Llevamos tu pedido a tu dirección</div>
+          </div>
+          {isDelivery && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
+        </div>
+      </div>
+
+      {/* Recojo */}
+      <div
+        className={`${base} ${isPickup?active:idle}`}
+        onClick={()=>onChange("pickup")}
+        role="button" aria-pressed={isPickup}
+      >
+        <div className="flex items-center gap-3">
+          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (isPickup ? "bg-amber-600" : "bg-slate-500")}>🏪</div>
+          <div>
+            <div className="font-semibold">Recojo en tienda</div>
+            <div className="text-xs text-slate-600">Punto de recojo disponible</div>
+          </div>
+          {isPickup && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Validador de entrega (según método) ===== */
 function validateDelivery(s){
   const errs = {};
+  const method = s?.deliveryMethod || "delivery";
+
   if(!s.nombre?.trim()) errs.nombre = "Ingresa tu nombre";
   if(!/^\d{9}$/.test((s.telefono||"").trim())) errs.telefono = "Número de 9 dígitos";
-  if(!s.distrito?.trim()) errs.distrito = "Selecciona distrito";
-  if(!s.direccion?.trim()) errs.direccion = "Ingresa dirección";
+
+  if(method === "delivery"){
+    if(!s.distrito?.trim())  errs.distrito  = "Selecciona distrito";
+    if(!s.direccion?.trim()) errs.direccion = "Ingresa dirección";
+  }
   if(!s.fecha?.trim()) errs.fecha = "Selecciona fecha";
-  if(!s.hora?.trim()) errs.hora = "Selecciona hora";
+  if(!s.hora?.trim())  errs.hora  = "Selecciona hora";
   return errs;
 }
 
@@ -150,7 +207,8 @@ function PhoneInput({value,onChange,error}){
   );
 }
 
-const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia", "San Martin de Porres", "Carabyllo"];
+/* ===== Distritos (cambio de nombre solicitado) ===== */
+const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabyllo"];
 
 /* ========= Fechas de fines de semana + bloques horarios ========= */
 const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];
@@ -178,14 +236,19 @@ function getUpcomingWeekendOptions(nWeekends=8){
 }
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-/* ========= UI: Datos de entrega (sin “Mi ubicación” ni “Link de Google Maps”) ========= */
+/* ========= UI: Datos de entrega (con tarjetas y autocompletado) ========= */
 function DatosEntrega({state,setState, errors={}}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
-      if(raw){ const data=JSON.parse(raw); setState(s=>({...s, ...data})); }
+      if(raw){
+        const data=JSON.parse(raw);
+        setState(s=>({ deliveryMethod: data.deliveryMethod || s.deliveryMethod || "delivery", ...s, ...data }));
+      } else {
+        setState(s=>({ deliveryMethod: s.deliveryMethod || "delivery", ...s }));
+      }
     }catch(e){}
     setHydrated(true);
   },[]);
@@ -194,7 +257,7 @@ function DatosEntrega({state,setState, errors={}}){
     try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
   },[state, hydrated]);
 
-  const {nombre,telefono,distrito,direccion,referencia,fecha,hora}=state;
+  const {nombre,telefono,distrito,direccion,referencia,fecha,hora,deliveryMethod="delivery"}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
 
   const weekendOptionsRef = useRef(getUpcomingWeekendOptions(8));
@@ -205,11 +268,44 @@ function DatosEntrega({state,setState, errors={}}){
     return opt ? opt.label : "";
   }, [fecha, weekendOptions]);
 
+  function handleMethodChange(m){
+    setState(s=>{
+      const next = {...s, deliveryMethod:m};
+      if(m==="pickup"){
+        next.direccion  = STORE_ADDR;         // auto y bloqueado
+        next.distrito   = STORE_DISTRICT;     // auto y bloqueado
+        next.referencia = STORE_REF;          // auto y bloqueado
+      }else{
+        // si venía de pickup y vuelve a delivery, limpiamos campos auto
+        if(next.direccion===STORE_ADDR)  next.direccion="";
+        if(next.distrito===STORE_DISTRICT) next.distrito="";
+        if(next.referencia===STORE_REF)  next.referencia="";
+      }
+      return next;
+    });
+  }
+
+  const isPickup = deliveryMethod==="pickup";
+
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        <h3 className="font-bold text-[var(--wk-title-red)] mb-2">Datos de entrega</h3>
-        <div className="space-y-2">
+        <h3 className="font-bold text-[var(--wk-title-red)] mb-3">Datos de entrega</h3>
+
+        {/* Tarjetas (tipo Rappi) */}
+        <DeliveryMethodCards value={deliveryMethod} onChange={handleMethodChange} />
+
+        {/* Bloque informativo del punto de recojo */}
+        {isPickup && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+            <div className="text-sm font-semibold">Punto de recojo</div>
+            <div className="text-sm">{STORE_ADDR} — {STORE_DISTRICT}</div>
+            <a className="text-xs underline" href={STORE_MAPS} target="_blank" rel="noreferrer">Ver en Google Maps</a>
+            <div className="text-xs text-amber-900/80 mt-1">*En recojo no se cobra delivery (verás Delivery: S/ 0.00 en el resumen).</div>
+          </div>
+        )}
+
+        <div className="space-y-2 mt-4">
           {/* Nombre */}
           <div id="field-nombre">
             <label className="text-sm font-medium">Nombre</label>
@@ -232,42 +328,56 @@ function DatosEntrega({state,setState, errors={}}){
           {/* Dirección */}
           <div id="field-direccion">
             <label className="text-sm font-medium">Dirección</label>
-            <div className="mt-1">
+            {isPickup ? (
+              <input
+                value={STORE_ADDR}
+                disabled readOnly
+                className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"
+              />
+            ) : (
               <input
                 value={direccion||""}
                 onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt"
                 aria-invalid={!!errors.direccion}
-                className={"w-full rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               />
-            </div>
-            {errors.direccion && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
+            )}
+            {errors.direccion && !isPickup && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
           </div>
 
           {/* Distrito */}
           <div id="field-distrito">
             <label className="text-sm font-medium">Distrito</label>
-            <select
-              value={distrito||""}
-              onChange={e=>set('distrito',e.target.value)}
-              aria-invalid={!!errors.distrito}
-              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[var(--wk-title-red)]" : "border-slate-300")}
-            >
-              <option value="">Selecciona distrito</option>
-              {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
-            </select>
-            {errors.distrito && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
+            {isPickup ? (
+              <input value={STORE_DISTRICT} disabled readOnly className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"/>
+            ) : (
+              <select
+                value={distrito||""}
+                onChange={e=>set('distrito',e.target.value)}
+                aria-invalid={!!errors.distrito}
+                className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[var(--wk-title-red)]" : "border-slate-300")}
+              >
+                <option value="">Selecciona distrito</option>
+                {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
+              </select>
+            )}
+            {errors.distrito && !isPickup && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
           </div>
 
-          {/* Referencia (opcional) */}
+          {/* Referencia */}
           <div>
             <label className="text-sm font-medium">Referencia</label>
-            <input
-              value={referencia||""}
-              onChange={e=>set('referencia',e.target.value)}
-              placeholder="Frente a parque / tienda / etc."
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-            />
+            {isPickup ? (
+              <input value={STORE_REF} disabled readOnly className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"/>
+            ) : (
+              <input
+                value={referencia||""}
+                onChange={e=>set('referencia',e.target.value)}
+                placeholder="Frente a parque / tienda / etc."
+                className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+              />
+            )}
           </div>
 
           {/* Fecha + Horario */}
@@ -310,7 +420,7 @@ function DatosEntrega({state,setState, errors={}}){
 
           {(fecha && hora) && (
             <div className="text-xs mt-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 inline-block">
-              Entrega: <b>{selectedLabel}</b> · <b>{hora}</b>
+              {isPickup ? "Recojo" : "Entrega"}: <b>{selectedLabel}</b> · <b>{hora}</b>
             </div>
           )}
         </div>
@@ -571,12 +681,12 @@ function EditModal({item, onClose, onSave}){
   );
 }
 
-function CartList({cart, setCart, canCalc}){
+function CartList({cart, setCart, canCalc, deliveryFee}){
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
+  const total = canCalc && cart.length>0 ? subtotal + (deliveryFee||0) : subtotal;
 
   function remove(i){ setCart(cart.filter((_,idx)=>idx!==i)); }
   function onSave(updated){ setCart(list=> list.map((it,idx)=> idx===editIdx ? updated : it )); setEditIdx(null); }
@@ -637,7 +747,7 @@ function CartList({cart, setCart, canCalc}){
         <div className="mt-3 text-right text-sm">Subtotal: <b>{soles(subtotal)}</b></div>
         {cart.length>0 && (canCalc
           ? (<>
-               <div className="text-right text-sm">Delivery: <b>{soles(DELIVERY)}</b></div>
+               <div className="text-right text-sm">Delivery: <b>{soles(deliveryFee||0)}</b></div>
                <div className="text-right font-bold">Total: {soles(total)}</div>
              </>)
           : (<div className="text-right text-xs text-slate-600">Completa los datos de entrega para calcular el total con delivery.</div>)
@@ -799,14 +909,18 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 
 /* ===================== WhatsApp message builder ===================== */
 function buildWhatsApp(cart,state,total, voucherUrl=""){
-  const L=[];
   if(cart.length===0){ return null; }
-  const {nombre,telefono,distrito,direccion,referencia,fecha,hora}=state;
-  if(!nombre || !telefono || telefono.length!==9 || !distrito || !direccion){ return false; }
 
-  const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
-  const mapsURL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
+  const method = state?.deliveryMethod || "delivery";
+  const {nombre,telefono,fecha,hora} = state;
 
+  // validaciones mínimas
+  if(!nombre || !telefono || telefono.length!==9){ return false; }
+  if(method==="delivery"){
+    if(!state.distrito || !state.direccion) return false;
+  }
+
+  const L=[];
   const telFmt = `+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
 
   L.push("Waffle King — Pedido");
@@ -814,10 +928,8 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
   cart.forEach((it,i)=>{
     L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
-
     const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
     if(masa) L.push("   · Masa: " + masa);
-
     if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
     if(it.siropes?.length)L.push("   · Siropes: "+it.siropes.map(s=>s.name+(s.extra?` (+${soles(s.extra)})`:"")).join(", "));
     if(it.premium?.length)L.push("   · Premium: "+it.premium.map(p=>`${p.name} x${p.qty}`).join(", "));
@@ -827,15 +939,29 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
   });
 
   L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
-  L.push(`Dirección: ${distrito} — ${direccion}`);
-  if(referencia) L.push("Referencia: "+referencia);
-  L.push("Google Maps: "+mapsURL);
+
+  if(method==="pickup"){
+    L.push("Método: Recojo en local");
+    L.push(`Dirección: ${STORE_ADDR} — ${STORE_DISTRICT}`);
+    L.push(`Referencia: ${STORE_REF}`);
+    L.push(`Mapa: ${STORE_MAPS}`);
+  }else{
+    const {distrito,direccion,referencia} = state;
+    const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
+    const mapsURL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
+    L.push("Método: Delivery");
+    L.push(`Dirección: ${distrito} — ${direccion}`);
+    if(referencia) L.push("Referencia: "+referencia);
+    L.push("Mapa: "+mapsURL);
+  }
 
   const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
+  const deliveryFee = (method==="pickup") ? 0 : DELIVERY;
+
   L.push("");
   L.push("Datos de pago:");
   L.push(`Waffle: ${soles(waffleSubtotal)}`);
-  L.push(`Delivery: ${soles(DELIVERY)}`);
+  if(deliveryFee>0) L.push(`Delivery: ${soles(deliveryFee)}`);
   L.push(`Total a pagar: ${soles(total)}`);
   L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
   L.push("");
@@ -847,16 +973,18 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 
 /* ==================== Helpers a Sheets ==================== */
 function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText, voucherUrl = ""}) {
+  const method = state?.deliveryMethod || "delivery";
+  const deliveryFee = method === "pickup" ? 0 : DELIVERY;
+
   return {
     orderId,
     cliente: {
       dni:        state?.dni || 0,
       nombre:     state?.nombre || '',
       telefono:   state?.telefono || '',
-      distrito:   state?.distrito || '',
-      direccion:  state?.direccion || '',
-      referencia: state?.referencia || ''
-      // (mapLink eliminado)
+      distrito:   method==="pickup" ? STORE_DISTRICT : (state?.distrito || ''),
+      direccion:  method==="pickup" ? STORE_ADDR      : (state?.direccion || ''),
+      referencia: method==="pickup" ? STORE_REF       : (state?.referencia || '')
     },
     programado: { 
       fecha: state?.fecha || '', 
@@ -864,7 +992,7 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
     },
     montos: { 
       subtotal, 
-      delivery: DELIVERY, 
+      delivery: deliveryFee, 
       total 
     },
     pago: { 
@@ -893,9 +1021,11 @@ function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, what
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({
-    nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",distrito:savedDelivery.distrito||"",
-    direccion:savedDelivery.direccion||"",referencia:savedDelivery.referencia||"",
-    fecha:savedDelivery.fecha||"",hora:savedDelivery.hora||""
+    nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",
+    distrito:savedDelivery.distrito||"", direccion:savedDelivery.direccion||"",
+    referencia:savedDelivery.referencia||"",
+    fecha:savedDelivery.fecha||"", hora:savedDelivery.hora||"",
+    deliveryMethod: savedDelivery.deliveryMethod || "delivery"
   });
 
   const [errors, setErrors] = useState({});
@@ -971,9 +1101,15 @@ function App(){
     location.href='index.html';
   }
 
-  const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const canCalc = !!(state.distrito && state.direccion);
-  const total = canCalc && cart.length>0 ? subtotal + DELIVERY : subtotal;
+  const subtotal   = cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
+  const deliveryFee= (state.deliveryMethod === "pickup") ? 0 : DELIVERY;
+
+  // Para cálculo de total: en pickup ya tenemos los campos auto (puede calcular).
+  const canCalc = state.deliveryMethod === "pickup"
+    ? true
+    : !!(state.distrito && state.direccion);
+
+  const total = canCalc && cart.length>0 ? subtotal + deliveryFee : subtotal;
 
   async function onVoucherSelect(file, previewUrl){
     const THRESHOLD = 1.2 * 1024 * 1024;
@@ -1101,7 +1237,7 @@ function App(){
     <div>
       <HeaderMini onSeguir={seguirComprando}/>
       <DatosEntrega state={state} setState={setState} errors={errors}/>
-      <CartList cart={cart} setCart={setCart} canCalc={canCalc}/>
+      <CartList cart={cart} setCart={setCart} canCalc={canCalc} deliveryFee={deliveryFee}/>
       <PaymentBox
         total={total}
         canCalc={canCalc}
