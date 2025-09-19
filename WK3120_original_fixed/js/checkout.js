@@ -1,20 +1,28 @@
 /* global React, ReactDOM */
 const {useState,useEffect,useRef} = React;
 
-// ======= CHECKOUT COMPLETO =======
+/* =================== CONSTANTES =================== */
 const LOGO="assets/logo.png";
 const QR="assets/yape-qr.png";
 const YAPE="942504978";
 const NOMBRE_TITULAR="Sheila M. Sánchez T.";
 const WHA="51942504978";
-const DELIVERY=5;
+const DELIVERY=5; // tarifa base por defecto
 
-// ========= Punto de recojo =========
-const STORE_NAME      = "Waffle King";
-const STORE_ADDR      = "La Ribera del Chillón Mz.P Lt.77";
-const STORE_DISTRICT  = "Puente Piedra";
-const STORE_REF       = "Parque la Ribera del Chillon...";
-const STORE_MAPS      = "https://maps.app.goo.gl/oGuctx4EiKcMfQrJA?g_st=awb";
+// Punto de recojo
+const STORE_ADDR     = "La Ribera del Chillón Mz.P Lt.77";
+const STORE_DISTRICT = "Puente Piedra";
+const STORE_REF      = "Parque la Ribera del Chillon...";
+const STORE_MAPS     = "https://maps.app.goo.gl/oGuctx4EiKcMfQrJA?g_st=awb";
+
+/* ===== Distritos por zonas (Norte / Sur) ===== */
+const DISTRITOS_NORTE = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabyllo"];
+const DISTRITOS_SUR   = ["San Isidro","Santiago de Surco","Miraflores","Barranco","Chorrillos","Surquillo"];
+
+// En estos distritos del Sur cobramos S/7
+const DISTRICT_FEE7 = new Set(DISTRITOS_SUR);
+const feeForDistrict = d => (DISTRICT_FEE7.has((d||"").trim()) ? 7 : DELIVERY);
+const feeForState    = s => (s?.deliveryMethod==="pickup" ? 0 : feeForDistrict(s?.distrito||""));
 
 /* ===================== CLOUDINARY (unsigned) ===================== */
 const CLOUDINARY_CLOUD = "dw35nct1h";
@@ -24,14 +32,14 @@ const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOU
 /* ============ WebApp de Google Sheets ============== */
 const SHEETS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxIOX0o4KclXe8RqXagiyWLPEFtnzFPV0xF4-nRuOntNT5XdUgDEn2Iws805QRix-LJwQ/exec';
 
-const soles = n => "S/ " + (Math.round(n*100)/100).toFixed(2);
+/* =================== HELPERS =================== */
+const soles = n => "S/ " + (Math.round((+n||0)*100)/100).toFixed(2);
 function toast(m){
   const t = document.getElementById("toast");
   if(!t) return;
   t.textContent=m; t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"),1400);
 }
-
 async function copyText(text,setCopied){
   try{ await navigator.clipboard.writeText(text); setCopied(true); }
   catch(e){
@@ -47,16 +55,12 @@ async function registrarPedidoGSheet(payload) {
   try {
     const url = SHEETS_WEBAPP_URL + '?t=' + Date.now();
     const data = JSON.stringify(payload);
-
-    // 1) Intento con sendBeacon (ideal porque no bloquea navegación)
     if (navigator.sendBeacon) {
-      const ok = navigator.sendBeacon(url, data); // Apps Script acepta JSON crudo en postData.contents
+      const ok = navigator.sendBeacon(url, data);
       if (ok) return true;
     }
-    // 2) Fallback: x-www-form-urlencoded (payload=...)
     await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
+      method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body: 'payload=' + encodeURIComponent(data)
     });
@@ -67,7 +71,7 @@ async function registrarPedidoGSheet(payload) {
   }
 }
 
-/* ===== Compresión de imagen (para acelerar el upload del voucher) ===== */
+/* ===== Compresión de imagen ===== */
 async function compressImage(file, maxW=1600, maxH=1600, quality=0.75){
   const img = document.createElement('img');
   const url = URL.createObjectURL(file);
@@ -91,6 +95,7 @@ async function compressImage(file, maxW=1600, maxH=1600, quality=0.75){
   });
 }
 
+/* =================== UI BASICA =================== */
 function HeaderMini({onSeguir}){
   return (
     <header className="sticky top-0 z-40 glass border-b border-amber-100/70">
@@ -117,61 +122,46 @@ function HeaderMini({onSeguir}){
   );
 }
 
-/* ===== Tarjetas tipo Rappi: método de entrega ===== */
-function DeliveryMethodCards({value="delivery", onChange}){
-  const isDelivery = value === "delivery";
-  const isPickup   = value === "pickup";
-  const base   = "flex-1 min-w-[220px] rounded-2xl border p-4 cursor-pointer transition shadow-soft";
+/* ===== Tarjetas: método de entrega ===== */
+function DeliveryMethodCards({value, onChange}){
+  const base   = "rounded-2xl border p-4 cursor-pointer transition shadow-soft";
   const active = "border-[var(--wk-gold)] ring-2 ring-amber-200 bg-white";
   const idle   = "border-slate-200 bg-white hover:border-amber-200 hover:shadow";
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {/* Delivery */}
-      <div
-        className={`${base} ${isDelivery?active:idle}`}
-        onClick={()=>onChange("delivery")}
-        role="button" aria-pressed={isDelivery}
-      >
+      <div className={`${base} ${value==='delivery'?active:idle}`} onClick={()=>onChange('delivery')} role="button" aria-pressed={value==='delivery'}>
         <div className="flex items-center gap-3">
-          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (isDelivery ? "bg-amber-600" : "bg-slate-500")}>🚚</div>
+          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (value==='delivery' ? "bg-amber-600" : "bg-slate-500")}>🚚</div>
           <div>
             <div className="font-semibold">Delivery</div>
             <div className="text-xs text-slate-600">Llevamos tu pedido a tu dirección</div>
           </div>
-          {isDelivery && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
+          {value==='delivery' && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
         </div>
       </div>
 
-      {/* Recojo */}
-      <div
-        className={`${base} ${isPickup?active:idle}`}
-        onClick={()=>onChange("pickup")}
-        role="button" aria-pressed={isPickup}
-      >
+      <div className={`${base} ${value==='pickup'?active:idle}`} onClick={()=>onChange('pickup')} role="button" aria-pressed={value==='pickup'}>
         <div className="flex items-center gap-3">
-          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (isPickup ? "bg-amber-600" : "bg-slate-500")}>🏪</div>
+          <div className={"h-10 w-10 rounded-xl grid place-items-center text-white font-bold " + (value==='pickup' ? "bg-amber-600" : "bg-slate-500")}>🏪</div>
           <div>
             <div className="font-semibold">Recojo en tienda</div>
             <div className="text-xs text-slate-600">Punto de recojo disponible</div>
           </div>
-          {isPickup && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
+          {value==='pickup' && <span className="ml-auto text-amber-700 text-sm font-semibold">Seleccionado</span>}
         </div>
       </div>
     </div>
   );
 }
 
-/* ===== Validador de entrega (según método) ===== */
+/* ===== Validador ===== */
 function validateDelivery(s){
   const errs = {};
   const method = s?.deliveryMethod || "delivery";
-
   if(!s.nombre?.trim()) errs.nombre = "Ingresa tu nombre";
   if(!/^\d{9}$/.test((s.telefono||"").trim())) errs.telefono = "Número de 9 dígitos";
-
-  if(method === "delivery"){
-    if(!s.distrito?.trim())  errs.distrito  = "Selecciona distrito";
+  if(method==="delivery"){
+    if(!s.distrito?.trim())  errs.distrito = "Selecciona distrito";
     if(!s.direccion?.trim()) errs.direccion = "Ingresa dirección";
   }
   if(!s.fecha?.trim()) errs.fecha = "Selecciona fecha";
@@ -184,8 +174,7 @@ function PhoneInput({value,onChange,error}){
   useEffect(()=>{ setVal((value||"").replace(/\D/g,"").slice(-9)); },[value]);
   function handle(e){
     const digits = e.target.value.replace(/\D/g,"").slice(0,9);
-    setVal(digits);
-    onChange(digits);
+    setVal(digits); onChange(digits);
   }
   const preview = val.length===9 ? `+51 ${val.slice(0,3)} ${val.slice(3,6)} ${val.slice(6)}` : "";
   return (
@@ -197,38 +186,26 @@ function PhoneInput({value,onChange,error}){
         inputMode="numeric"
         placeholder="9xxxxxxxx"
         aria-invalid={!!error}
-        className={
-          "mt-1 w-full rounded-lg border p-2 " +
-          (error ? "border-[var(--wk-title-red)]" : "border-slate-300")
-        }
+        className={"mt-1 w-full rounded-lg border p-2 " + (error ? "border-[var(--wk-title-red)]" : "border-slate-300")}
       />
       {preview && <div className="text-xs text-slate-500 mt-1">Formato: {preview}</div>}
     </div>
   );
 }
 
-/* ===== Distritos (cambio de nombre solicitado) ===== */
-const DISTRITOS = ["Comas","Puente Piedra","Los Olivos","Independencia","San Martin (Norte)","Carabayllo"];
-
-/* ========= Fechas de fines de semana + bloques horarios ========= */
+/* ========= Fechas y horarios ========= */
 const TIME_SLOTS = ["8:00–10:00 am","2:00–4:00 pm"];
 const MONTHS_ABR = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"];
 const WEEKDAYS_ABR = ["dom","lun","mar","mié","jue","vie","sáb"];
-
 function getUpcomingWeekendOptions(nWeekends=8){
   const out = [];
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
   let d = new Date(today);
   while (d.getDay() !== 6 && d.getDay() !== 0) d.setDate(d.getDate()+1);
   while (out.length < nWeekends*2){
     if ((d.getDay()===6 || d.getDay()===0) && d >= today){
       const label = `${cap(WEEKDAYS_ABR[d.getDay()])} ${d.getDate()} ${MONTHS_ABR[d.getMonth()]}`;
-      out.push({
-        dateISO: d.toISOString().slice(0,10),
-        label,
-        fullLabel: d.toLocaleDateString("es-PE", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
-      });
+      out.push({ dateISO: d.toISOString().slice(0,10), label, fullLabel: d.toLocaleDateString("es-PE", { weekday:"long", day:"numeric", month:"long", year:"numeric" }) });
     }
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (d.getDay()===6 ? 1 : 6));
   }
@@ -236,76 +213,77 @@ function getUpcomingWeekendOptions(nWeekends=8){
 }
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-/* ========= UI: Datos de entrega (con tarjetas y autocompletado) ========= */
+/* ========= UI: Datos de entrega ========= */
 function DatosEntrega({state,setState, errors={}}){
   const storeKey='wk_delivery';
   const [hydrated,setHydrated]=useState(false);
+
+  // Hidrata desde localStorage
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storeKey);
-      if(raw){
-        const data=JSON.parse(raw);
-        setState(s=>({ deliveryMethod: data.deliveryMethod || s.deliveryMethod || "delivery", ...s, ...data }));
-      } else {
-        setState(s=>({ deliveryMethod: s.deliveryMethod || "delivery", ...s }));
-      }
+      if(raw){ const data=JSON.parse(raw); setState(s=>({ deliveryMethod: data.deliveryMethod || "delivery", ...s, ...data })); }
+      else { setState(s=>({ deliveryMethod: s.deliveryMethod || "delivery", ...s })); }
     }catch(e){}
     setHydrated(true);
   },[]);
-  useEffect(()=>{
-    if(!hydrated) return;
-    try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){}
-  },[state, hydrated]);
+  useEffect(()=>{ if(hydrated){ try{ localStorage.setItem(storeKey, JSON.stringify(state)); }catch(e){} } },[state, hydrated]);
 
-  const {nombre,telefono,distrito,direccion,referencia,fecha,hora,deliveryMethod="delivery"}=state;
+  const {nombre,telefono,distrito="",direccion="",referencia="",fecha,hora,deliveryMethod="delivery"}=state;
   const set=(k,v)=>setState(s=>({...s,[k]:v}));
+
+  // Cambio de método
+  function handleMethodChange(m){
+    if(m==="pickup"){
+      setState(s=>({
+        ...s,
+        deliveryMethod:"pickup",
+        distrito:STORE_DISTRICT,
+        direccion:STORE_ADDR,
+        referencia:STORE_REF
+      }));
+    }else{
+      setState(s=>({
+        ...s,
+        deliveryMethod:"delivery",
+        // si estaba con datos del local, los limpiamos
+        distrito: (s.distrito===STORE_DISTRICT ? "" : s.distrito||""),
+        direccion:(s.direccion===STORE_ADDR  ? "" : s.direccion||""),
+        referencia:(s.referencia===STORE_REF ? "" : s.referencia||"")
+      }));
+    }
+  }
 
   const weekendOptionsRef = useRef(getUpcomingWeekendOptions(8));
   const weekendOptions = weekendOptionsRef.current;
-
   const selectedLabel = React.useMemo(()=>{
     const opt = weekendOptions.find(o=>o.dateISO===fecha);
     return opt ? opt.label : "";
   }, [fecha, weekendOptions]);
 
-  function handleMethodChange(m){
-    setState(s=>{
-      const next = {...s, deliveryMethod:m};
-      if(m==="pickup"){
-        next.direccion  = STORE_ADDR;         // auto y bloqueado
-        next.distrito   = STORE_DISTRICT;     // auto y bloqueado
-        next.referencia = STORE_REF;          // auto y bloqueado
-      }else{
-        // si venía de pickup y vuelve a delivery, limpiamos campos auto
-        if(next.direccion===STORE_ADDR)  next.direccion="";
-        if(next.distrito===STORE_DISTRICT) next.distrito="";
-        if(next.referencia===STORE_REF)  next.referencia="";
-      }
-      return next;
-    });
-  }
-
   const isPickup = deliveryMethod==="pickup";
+  const currentFee = feeForState(state);
 
   return (
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
-        <h3 className="font-bold text-[var(--wk-title-red)] mb-3">Datos de entrega</h3>
-
-        {/* Tarjetas (tipo Rappi) */}
-        <DeliveryMethodCards value={deliveryMethod} onChange={handleMethodChange} />
-
-        {/* Bloque informativo del punto de recojo */}
+      {/* Selector de método */}
+      <div className="rounded-2xl bg-white border border-amber-200 p-4 sm:p-5 shadow-soft mb-3">
+        <h3 className="font-bold text-[var(--wk-title-red)] mb-2">¿Cómo deseas recibir tu pedido?</h3>
+        <DeliveryMethodCards value={deliveryMethod} onChange={handleMethodChange}/>
         {isPickup && (
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-            <div className="text-sm font-semibold">Punto de recojo</div>
-            <div className="text-sm">{STORE_ADDR} — {STORE_DISTRICT}</div>
-            <a className="text-xs underline" href={STORE_MAPS} target="_blank" rel="noreferrer">Ver en Google Maps</a>
-            <div className="text-xs text-amber-900/80 mt-1">*En recojo no se cobra delivery (verás Delivery: S/ 0.00 en el resumen).</div>
+          <div className="mt-3 text-sm rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-3">
+            <div className="font-semibold">Punto de recojo</div>
+            <div>{STORE_ADDR} — {STORE_DISTRICT}</div>
+            <div>Referencia: {STORE_REF}</div>
+            <a className="text-amber-800 underline" href={STORE_MAPS} target="_blank" rel="noreferrer">Ver en Google Maps</a>
           </div>
         )}
+      </div>
 
-        <div className="space-y-2 mt-4">
+      {/* Datos de entrega */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
+        <h3 className="font-bold text-[var(--wk-title-red)] mb-2">Datos de entrega</h3>
+        <div className="space-y-2">
           {/* Nombre */}
           <div id="field-nombre">
             <label className="text-sm font-medium">Nombre</label>
@@ -328,56 +306,53 @@ function DatosEntrega({state,setState, errors={}}){
           {/* Dirección */}
           <div id="field-direccion">
             <label className="text-sm font-medium">Dirección</label>
-            {isPickup ? (
+            <div className="mt-1">
               <input
-                value={STORE_ADDR}
-                disabled readOnly
-                className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"
-              />
-            ) : (
-              <input
-                value={direccion||""}
+                value={isPickup ? STORE_ADDR : (direccion||"")}
                 onChange={e=>set('direccion',e.target.value)}
                 placeholder="Calle 123, Mz Lt"
                 aria-invalid={!!errors.direccion}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300")}
+                disabled={isPickup}
+                className={"w-full rounded-lg border p-2 " + (errors.direccion ? "border-[var(--wk-title-red)]" : "border-slate-300") + (isPickup?" opacity-80 bg-slate-50 cursor-not-allowed":"")}
               />
-            )}
-            {errors.direccion && !isPickup && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
+            </div>
+            {errors.direccion && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.direccion}</div>}
           </div>
 
-          {/* Distrito */}
+          {/* Distrito (con zonas) */}
           <div id="field-distrito">
             <label className="text-sm font-medium">Distrito</label>
-            {isPickup ? (
-              <input value={STORE_DISTRICT} disabled readOnly className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"/>
-            ) : (
-              <select
-                value={distrito||""}
-                onChange={e=>set('distrito',e.target.value)}
-                aria-invalid={!!errors.distrito}
-                className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[var(--wk-title-red)]" : "border-slate-300")}
-              >
-                <option value="">Selecciona distrito</option>
-                {DISTRITOS.map(d=> <option key={d} value={d}>{d}</option>)}
-              </select>
-            )}
-            {errors.distrito && !isPickup && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
+            <select
+              value={isPickup ? STORE_DISTRICT : (distrito||"")}
+              onChange={e=>set('distrito',e.target.value)}
+              aria-invalid={!!errors.distrito}
+              disabled={isPickup}
+              className={"mt-1 w-full rounded-lg border p-2 " + (errors.distrito ? "border-[var(--wk-title-red)]" : "border-slate-300") + (isPickup?" opacity-80 bg-slate-50 cursor-not-allowed":"")}
+            >
+              <option value="">Selecciona distrito</option>
+              <optgroup label="Zona Norte">
+                {DISTRITOS_NORTE.map(d=> <option key={"N-"+d} value={d}>{d}</option>)}
+              </optgroup>
+              <optgroup label="Zona Sur (S/7)">
+                {DISTRITOS_SUR.map(d=> <option key={"S-"+d} value={d}>{d}</option>)}
+              </optgroup>
+            </select>
+            {!isPickup && (distrito ?
+              <div className="text-xs text-amber-900 mt-1">Tarifa de delivery para {distrito}: <b>{soles(feeForDistrict(distrito))}</b></div>
+            : <div className="text-xs text-slate-600 mt-1">Zona Norte S/5 · Zonas Sur listadas S/7</div>)}
+            {errors.distrito && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
           </div>
 
           {/* Referencia */}
           <div>
             <label className="text-sm font-medium">Referencia</label>
-            {isPickup ? (
-              <input value={STORE_REF} disabled readOnly className="mt-1 w-full rounded-lg border p-2 bg-gray-50 border-slate-200"/>
-            ) : (
-              <input
-                value={referencia||""}
-                onChange={e=>set('referencia',e.target.value)}
-                placeholder="Frente a parque / tienda / etc."
-                className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-              />
-            )}
+            <input
+              value={isPickup ? STORE_REF : (referencia||"")}
+              onChange={e=>set('referencia',e.target.value)}
+              placeholder="Frente a parque / tienda / etc."
+              disabled={isPickup}
+              className={"mt-1 w-full rounded-lg border p-2 " + (isPickup?"opacity-80 bg-slate-50 cursor-not-allowed border-slate-300":"border-slate-300")}
+            />
           </div>
 
           {/* Fecha + Horario */}
@@ -393,9 +368,7 @@ function DatosEntrega({state,setState, errors={}}){
               >
                 <option value="" disabled>Elige sábado o domingo…</option>
                 {weekendOptions.map(opt=>(
-                  <option key={opt.dateISO} value={opt.dateISO} title={opt.fullLabel}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.dateISO} value={opt.dateISO} title={opt.fullLabel}>{opt.label}</option>
                 ))}
               </select>
               {errors.fecha && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.fecha}</div>}
@@ -410,9 +383,7 @@ function DatosEntrega({state,setState, errors={}}){
                 className={"mt-1 w-full rounded-lg border p-2 " + (errors.hora ? "border-[var(--wk-title-red)]" : "border-slate-300")}
               >
                 <option value="" disabled>Elige intervalo…</option>
-                {TIME_SLOTS.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                {TIME_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               {errors.hora && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.hora}</div>}
             </div>
@@ -420,7 +391,7 @@ function DatosEntrega({state,setState, errors={}}){
 
           {(fecha && hora) && (
             <div className="text-xs mt-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 inline-block">
-              {isPickup ? "Recojo" : "Entrega"}: <b>{selectedLabel}</b> · <b>{hora}</b>
+              Entrega: <b>{selectedLabel}</b> · <b>{hora}</b> {isPickup && <span>· Recojo en tienda</span>}
             </div>
           )}
         </div>
@@ -429,7 +400,7 @@ function DatosEntrega({state,setState, errors={}}){
   );
 }
 
-/* ====== PACKS del editor ====== */
+/* ====== PACKS ====== */
 const PACKS=[
   {id:"special",name:"Waffle Especial (1 piso)",base:25,incTop:3,incSir:2},
   {id:"king",   name:"Waffle King (2 pisos)",  base:45,incTop:4,incSir:3},
@@ -468,20 +439,16 @@ const PREMIUM=[
   {id:"p-ferrero",name:"Ferrero Rocher",price:5},
 ];
 
+/* =================== MODAL EDICION =================== */
 function EditModal({item, onClose, onSave}){
   const baseItem = JSON.parse(JSON.stringify(item||{}));
-
   const initialPackId = (PACKS.some(p=>p.id===baseItem.packId) ? baseItem.packId : PACKS[0].id);
   const [packId,setPackId]=useState(initialPackId);
   const pack = PACKS.find(p=>p.id===packId) || PACKS[0];
-
   const [masaId, setMasaId] = useState(baseItem.masaId || "clasica");
-
   const [qty,setQty]=useState(baseItem.qty||1);
-  const [tops,setTops]=useState(()=> (baseItem.toppings||[])
-    .map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
-  const [sirs,setSirs]=useState(()=> (baseItem.siropes||[])
-    .map(s=> (SIROPES.find(x=>x.name===s.name)||{}).id).filter(Boolean) );
+  const [tops,setTops]=useState(()=> (baseItem.toppings||[]).map(n=> (TOPS.find(t=>t.name===n)||{}).id).filter(Boolean) );
+  const [sirs,setSirs]=useState(()=> (baseItem.siropes||[]).map(s=> (SIROPES.find(x=>x.name===s.name)||{}).id).filter(Boolean) );
   const [prem,setPrem]=useState(()=>{
     const m = Object.fromEntries(PREMIUM.map(p=>[p.id,0]));
     (baseItem.premium||[]).forEach(p=>{ const id=(PREMIUM.find(x=>x.name===p.name)||{}).id; if(id) m[id]=p.qty; });
@@ -501,10 +468,8 @@ function EditModal({item, onClose, onSave}){
     const extraSirs = sirsObjs.reduce((a,s)=>a+(s.extra||0),0);
     const premObjs = PREMIUM.filter(p=>(+prem[p.id]||0)>0).map(p=>({name:p.name,price:p.price,qty:+prem[p.id]}));
     const extraPrem = premObjs.reduce((a,p)=>a+p.price*p.qty,0);
-
     const masaDelta = (MASAS.find(m => m.id === masaId)?.delta || 0);
     const masaName  = (MASAS.find(m => m.id === masaId)?.name  || "Clásica (harina de trigo)");
-
     const unit = base + extraSirs + extraPrem + masaDelta;
 
     const updated = {
@@ -524,7 +489,6 @@ function EditModal({item, onClose, onSave}){
     };
     onSave(updated);
   }
-
   const limits={incTop:pack.incTop,incSir:pack.incSir};
 
   return (
@@ -539,18 +503,9 @@ function EditModal({item, onClose, onSave}){
           {/* PACKS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PACKS.map(p=>(
-              <button
-                key={p.id}
-                type="button"
-                onClick={()=>{
-                  setPackId(p.id);
-                  setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0])));
-                  setMasaId("clasica");
-                }}
-                className={
-                  "text-left rounded-xl border p-3 " +
-                  (p.id===packId ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")
-                }>
+              <button key={p.id} type="button"
+                onClick={()=>{ setPackId(p.id); setTops([]); setSirs([]); setPrem(Object.fromEntries(PREMIUM.map(x=>[x.id,0]))); setMasaId("clasica"); }}
+                className={"text-left rounded-xl border p-3 " + (p.id===packId ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")}>
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-600">Incluye {p.incTop} toppings + {p.incSir} siropes</div>
               </button>
@@ -561,18 +516,11 @@ function EditModal({item, onClose, onSave}){
           <div>
             <div className="text-sm font-medium mb-1">Tipo de masa</div>
             <div className="grid sm:grid-cols-2 gap-2">
-              {MASAS.map(m => {
+              {MASAS.map(m=>{
                 const active = masaId === m.id;
                 return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={()=> setMasaId(m.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")
-                    }
-                  >
+                  <button key={m.id} type="button" onClick={()=> setMasaId(m.id)}
+                    className={"text-left rounded-xl border px-3 py-2 " + (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white")}>
                     <div className="flex items-center justify-between">
                       <span>{m.name}</span>
                       {m.delta > 0 && <span className="text-xs">+{soles(m.delta)}</span>}
@@ -598,15 +546,8 @@ function EditModal({item, onClose, onSave}){
               {TOPS.map(t=>{
                 const active=tops.includes(t.id); const dis=!active && (tops.length>=limits.incTop);
                 return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") +
-                      (dis ? " opacity-50 cursor-not-allowed" : "")
-                    }>
+                  <button key={t.id} type="button" onClick={()=>!dis&&toggle(tops,setTops,limits.incTop,t.id)}
+                    className={"text-left rounded-xl border px-3 py-2 " + (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") + (dis ? " opacity-50 cursor-not-allowed" : "")}>
                     <div className="flex items-center justify-between">
                       <span>{t.name}</span>{active&&<span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                     </div>
@@ -623,15 +564,8 @@ function EditModal({item, onClose, onSave}){
               {SIROPES.map(s=>{
                 const active=sirs.includes(s.id); const dis=!active && (sirs.length>=limits.incSir);
                 return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
-                    className={
-                      "text-left rounded-xl border px-3 py-2 " +
-                      (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") +
-                      (dis ? " opacity-50 cursor-not-allowed" : "")
-                    }>
+                  <button key={s.id} type="button" onClick={()=>!dis&&toggle(sirs,setSirs,limits.incSir,s.id)}
+                    className={"text-left rounded-xl border px-3 py-2 " + (active ? "border-2 border-[var(--wk-gold)] bg-white" : "border-slate-200 bg-white") + (dis ? " opacity-50 cursor-not-allowed" : "")}>
                     <div className="flex items-center justify-between">
                       <span>{s.name}{s.extra?` (+${soles(s.extra)})`:""}</span>{active&&<span className="text-xs text-[var(--wk-brown-deep)]">✓</span>}
                     </div>
@@ -681,12 +615,13 @@ function EditModal({item, onClose, onSave}){
   );
 }
 
+/* =================== CARRITO =================== */
 function CartList({cart, setCart, canCalc, deliveryFee}){
   const [openAll,setOpenAll]=useState(true);
   const [editIdx,setEditIdx]=useState(null);
 
   const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const total = canCalc && cart.length>0 ? subtotal + (deliveryFee||0) : subtotal;
+  const total = cart.length>0 && canCalc ? subtotal + (deliveryFee||0) : subtotal;
 
   function remove(i){ setCart(cart.filter((_,idx)=>idx!==i)); }
   function onSave(updated){ setCart(list=> list.map((it,idx)=> idx===editIdx ? updated : it )); setEditIdx(null); }
@@ -696,9 +631,7 @@ function CartList({cart, setCart, canCalc, deliveryFee}){
       <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-soft">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-[var(--wk-title-red)]">Resumen de tu compra</h3>
-          {cart.length>0 && <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>
-            {openAll?"Ocultar detalle":"Mostrar detalle"}
-          </button>}
+          {cart.length>0 && <button type="button" className="px-2 py-1 rounded-full border" onClick={()=>setOpenAll(v=>!v)}>{openAll?"Ocultar detalle":"Mostrar detalle"}</button>}
         </div>
 
         {cart.length===0 ? <p className="text-sm text-slate-600">Tu carrito está vacío.</p> :
@@ -765,7 +698,6 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   const [copied,setCopied]=useState(false);
   const [error,setError]=useState("");
   const fileRef=useRef(null);
-
   const fmt = YAPE.replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 
   function validarArchivo(f){
@@ -774,15 +706,8 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     if(f.size > 10*1024*1024) return "Máximo 10MB.";
     return "";
   }
-
   function abrirPicker(){ fileRef.current?.click(); }
-
-  function limpiarVoucher(){
-    onVoucherClear?.();
-    setError("");
-    if (fileRef.current) fileRef.current.value="";
-  }
-
+  function limpiarVoucher(){ onVoucherClear?.(); setError(""); if (fileRef.current) fileRef.current.value=""; }
   async function handleChange(e){
     const f=e.target.files?.[0];
     if(!f) return;
@@ -797,28 +722,16 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 
   const Logos = (
     <div className="payment-logos flex items-center gap-2">
-      <img
-        src="assets/yape.png"
-        alt="Yape"
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
+      <img src="assets/yape.png" alt="Yape" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{ if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="../assets/yape.png"; }
           else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="assets/yape.jpg"; }
           else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/yape.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
-      <img
-        src="assets/plin.png"
-        alt="Plin"
-        className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
-        onError={(e)=>{
-          if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
+          else { e.target.style.display="none"; }}} />
+      <img src="assets/plin.png" alt="Plin" className="h-8 w-8 rounded-md ring-2 ring-white object-cover"
+        onError={(e)=>{ if (!e.target.dataset.retry) { e.target.dataset.retry="1"; e.target.src="assets/plin.jpg"; }
           else if (e.target.dataset.retry==="1") { e.target.dataset.retry="2"; e.target.src="../assets/plin.png"; }
           else if (e.target.dataset.retry==="2") { e.target.dataset.retry="3"; e.target.src="../assets/plin.jpg"; }
-          else { e.target.style.display="none"; }
-        }}
-      />
+          else { e.target.style.display="none"; }}} />
     </div>
   );
 
@@ -826,26 +739,13 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
     <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4">
       <div className="rounded-2xl border border-amber-200/70 bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.06)] p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {Logos}
-            <h4 className="font-bold text-[var(--wk-title-red)]">Forma de pago</h4>
-          </div>
-
+          <div className="flex items-center gap-3">{Logos}<h4 className="font-bold text-[var(--wk-title-red)]">Forma de pago</h4></div>
           <div className="payment-actions flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={()=>copyText(YAPE,setCopied)}
-              className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}
-            >
+            <button type="button" onClick={()=>copyText(YAPE,setCopied)}
+              className={"w-full sm:w-auto px-3 py-2 rounded-full border text-sm transition "+(copied?"bg-amber-600 text-white border-amber-600":"border-amber-300 text-amber-800 hover:bg-amber-50")}>
               {copied ? "¡Número copiado!" : "Copiar número"}
             </button>
-            <button
-              type="button"
-              onClick={()=>setOpen(true)}
-              className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition"
-            >
-              Ver QR
-            </button>
+            <button type="button" onClick={()=>setOpen(true)} className="w-full sm:w-auto px-3 py-2 rounded-full border border-amber-300 text-amber-800 text-sm hover:bg-amber-50 transition">Ver QR</button>
           </div>
         </div>
 
@@ -857,21 +757,16 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
 
         <div className="mt-3" id="voucher-area">
           <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
-
           {!voucherPreview ? (
-            <button
-              type="button"
-              onClick={abrirPicker}
+            <button type="button" onClick={abrirPicker}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-white transition active:scale-[0.98]"
-              style={{ backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)' }}
-            >
+              style={{ backgroundImage:'linear-gradient(180deg,#b32b11,#6c1e00)', boxShadow:'0 8px 18px rgba(58,17,4,.22)' }}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l4 4h-3v4h-2V9H8l4-4z"/><path d="M20 18v2H4v-2h16z"/></svg>
               Subir voucher
             </button>
           ) : (
             <div className="flex items-start gap-3">
-              <a href={voucherPreview} target="_blank" rel="noreferrer"
-                 className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
+              <a href={voucherPreview} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl ring-1 ring-amber-200 bg-white">
                 <img src={voucherPreview} alt="voucher" className="h-24 w-24 object-cover"/>
               </a>
               <div className="flex flex-col gap-2">
@@ -884,18 +779,13 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
               </div>
             </div>
           )}
-
           {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
           {voucherErr && <div className="text-xs text-[var(--wk-title-red)] mt-2">{voucherErr}</div>}
         </div>
       </div>
 
       {open && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          role="dialog" aria-modal="true" aria-labelledby="wk-qr-title"
-          onClick={()=>setOpen(false)}
-        >
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="wk-qr-title" onClick={()=>setOpen(false)}>
           <div className="bg-white rounded-2xl p-5 w-[340px]" onClick={e=>e.stopPropagation()}>
             <div id="wk-qr-title" className="text-center font-semibold mb-3">QR de Yape</div>
             <img src={QR} alt="Código QR de Yape" className="w-full h-auto rounded-xl ring-1 ring-amber-200"/>
@@ -907,27 +797,35 @@ function PaymentBox({total,canCalc, onVoucherSelect, onVoucherClear, voucherPrev
   );
 }
 
-/* ===================== WhatsApp message builder ===================== */
-function buildWhatsApp(cart,state,total, voucherUrl=""){
-  if(cart.length===0){ return null; }
-
-  const method = state?.deliveryMethod || "delivery";
-  const {nombre,telefono,fecha,hora} = state;
-
-  // validaciones mínimas
-  if(!nombre || !telefono || telefono.length!==9){ return false; }
-  if(method==="delivery"){
-    if(!state.distrito || !state.direccion) return false;
-  }
-
+/* ===================== WhatsApp ===================== */
+function buildWhatsApp(cart,state,total, voucherUrl="", deliveryFee=0){
   const L=[];
+  if(cart.length===0){ return null; }
+  const {nombre,telefono,distrito,direccion,referencia,fecha,hora,deliveryMethod="delivery"}=state;
+  if(!nombre || !telefono || telefono.length!==9){ return false; }
+  if(deliveryMethod==="delivery" && (!distrito || !direccion)){ return false; }
+
+  const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
+  const mapsURL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
   const telFmt = `+51 ${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
+  const methodLabel = deliveryMethod==="pickup" ? "Recojo en tienda" : "Delivery";
 
   L.push("Waffle King — Pedido");
-  if(fecha||hora){L.push("");L.push(`Fecha de entrega: ${fecha||"-"}`);L.push(`Hora: ${hora||"-"}`)};L.push("");
+  if(fecha||hora){L.push(""); L.push(`*Fecha:* ${fecha||"-"}`); L.push(`*Hora:* ${hora||"-"}`);}
+  L.push(""); L.push(`*Método de entrega:* ${methodLabel}`);
 
+  if(deliveryMethod==="pickup"){
+    L.push(`*Punto de recojo:* ${STORE_ADDR} — ${STORE_DISTRICT}`);
+    L.push(`Maps: ${STORE_MAPS}`);
+  }else{
+    L.push(`Dirección: ${distrito} — ${direccion}`);
+    if(referencia) L.push("Referencia: "+referencia);
+    L.push("Google Maps: "+mapsURL);
+  }
+
+  L.push("");
   cart.forEach((it,i)=>{
-    L.push(`${i+1}. ${it.name} x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
+    L.push(`${i+1}. *${it.name}* x${it.qty} — ${soles(it.unitPrice*it.qty)}`);
     const masa = it.masaName || (it.masaId ? (MASAS.find(m=>m.id===it.masaId)?.name||"") : "Clásica (harina de trigo)");
     if(masa) L.push("   · Masa: " + masa);
     if(it.toppings?.length)L.push("   · Toppings: "+it.toppings.join(", "));
@@ -938,31 +836,15 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
     }
   });
 
-  L.push(""); L.push(`Cliente: ${nombre}`); L.push(`Tel: ${telFmt}`);
-
-  if(method==="pickup"){
-    L.push("Método: Recojo en local");
-    L.push(`Dirección: ${STORE_ADDR} — ${STORE_DISTRICT}`);
-    L.push(`Referencia: ${STORE_REF}`);
-    L.push(`Mapa: ${STORE_MAPS}`);
-  }else{
-    const {distrito,direccion,referencia} = state;
-    const addressForMaps = [direccion, distrito].filter(Boolean).join(", ");
-    const mapsURL = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addressForMaps);
-    L.push("Método: Delivery");
-    L.push(`Dirección: ${distrito} — ${direccion}`);
-    if(referencia) L.push("Referencia: "+referencia);
-    L.push("Mapa: "+mapsURL);
-  }
+  L.push(""); L.push(`*Cliente:* ${nombre}`); L.push(`Tel: ${telFmt}`);
 
   const waffleSubtotal = cart.reduce((a,it)=>a + (it.unitPrice||0)*(it.qty||0), 0);
-  const deliveryFee = (method==="pickup") ? 0 : DELIVERY;
-
   L.push("");
-  L.push("Datos de pago:");
+  L.push("*Datos de pago:*");
   L.push(`Waffle: ${soles(waffleSubtotal)}`);
-  if(deliveryFee>0) L.push(`Delivery: ${soles(deliveryFee)}`);
-  L.push(`Total a pagar: ${soles(total)}`);
+  L.push(`Delivery: ${soles(deliveryFee)}`);
+  L.push(`*Total a pagar:* ${soles(total)}`);
+  L.push(`Pago: *Yape/Plin*`);
   L.push(`Captura de pago: ${voucherUrl?.trim()?voucherUrl.trim():"(no adjuntado)"}`);
   L.push("");
   L.push("*EN BREVE CONFIRMAREMOS TU PEDIDO*");
@@ -972,60 +854,38 @@ function buildWhatsApp(cart,state,total, voucherUrl=""){
 }
 
 /* ==================== Helpers a Sheets ==================== */
-function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, whatsAppText, voucherUrl = ""}) {
-  const method = state?.deliveryMethod || "delivery";
-  const deliveryFee = method === "pickup" ? 0 : DELIVERY;
-
+function buildOrderPayloadForSheets({orderId, cart, state, subtotal, total, deliveryFee, whatsAppText, voucherUrl = ""}) {
   return {
     orderId,
     cliente: {
       dni:        state?.dni || 0,
       nombre:     state?.nombre || '',
       telefono:   state?.telefono || '',
-      distrito:   method==="pickup" ? STORE_DISTRICT : (state?.distrito || ''),
-      direccion:  method==="pickup" ? STORE_ADDR      : (state?.direccion || ''),
-      referencia: method==="pickup" ? STORE_REF       : (state?.referencia || '')
+      distrito:   state?.distrito || '',
+      direccion:  state?.direccion || '',
+      referencia: state?.referencia || ''
     },
-    programado: { 
-      fecha: state?.fecha || '', 
-      hora:  state?.hora  || '' 
-    },
-    montos: { 
-      subtotal, 
-      delivery: deliveryFee, 
-      total 
-    },
-    pago: { 
-      metodo:  'Yape/Plin', 
-      numero:  YAPE, 
-      titular: NOMBRE_TITULAR, 
-      link:    voucherUrl || ''
-    },
+    programado: { fecha: state?.fecha || '', hora:  state?.hora  || '' },
+    montos: { subtotal, delivery: deliveryFee, total },
+    pago: { metodo:  'Yape/Plin', numero:  YAPE, titular: NOMBRE_TITULAR, link: voucherUrl || '' },
     items: (cart || []).map(it => ({
-      name:       it.name,
-      qty:        Number(it.qty || 0),
-      unitPrice:  Number(it.unitPrice || 0),
-      masa:       it.masa || it.masaName || '',
-      toppings:   it.toppings || [],
-      siropes:    it.siropes  || [],
-      premium:    it.premium  || [],
-      recipient:  it.recipient || '',
-      notes:      it.notes || ''
+      name: it.name, qty: Number(it.qty || 0), unitPrice: Number(it.unitPrice || 0),
+      masa: it.masa || it.masaName || '', toppings: it.toppings || [], siropes: it.siropes  || [],
+      premium: it.premium  || [], recipient:  it.recipient || '', notes: it.notes || ''
     })),
     pagoLink: voucherUrl || '',
     whatsAppText
   };
 }
 
-/* ================== APP (con validación guiada) ================== */
+/* ================== APP ================== */
 function App(){
   const savedDelivery = (() => { try { return JSON.parse(localStorage.getItem('wk_delivery') || '{}'); } catch(e){ return {}; } })();
   const [state,setState]=useState({
-    nombre:savedDelivery.nombre||"",telefono:savedDelivery.telefono||"",
+    deliveryMethod: savedDelivery.deliveryMethod || "delivery",
+    nombre:savedDelivery.nombre||"", telefono:savedDelivery.telefono||"",
     distrito:savedDelivery.distrito||"", direccion:savedDelivery.direccion||"",
-    referencia:savedDelivery.referencia||"",
-    fecha:savedDelivery.fecha||"", hora:savedDelivery.hora||"",
-    deliveryMethod: savedDelivery.deliveryMethod || "delivery"
+    referencia:savedDelivery.referencia||"", fecha:savedDelivery.fecha||"", hora:savedDelivery.hora||""
   });
 
   const [errors, setErrors] = useState({});
@@ -1063,16 +923,8 @@ function App(){
     const timer = setInterval(()=>{
       tries++;
       const c = normalizeCart(multiRead());
-      if (c.length>0){
-        setCart(c);
-        clearInterval(timer);
-      }
-      if (tries>=10){
-        clearInterval(timer);
-        if (location.protocol==='file:'){
-          toast('Abre con http:// (no file://) para compartir el carrito');
-        }
-      }
+      if (c.length>0){ setCart(c); clearInterval(timer); }
+      if (tries>=10){ clearInterval(timer); if (location.protocol==='file:'){ toast('Abre con http:// (no file://) para compartir el carrito'); } }
     },300);
     return ()=>clearInterval(timer);
   },[]);
@@ -1101,24 +953,15 @@ function App(){
     location.href='index.html';
   }
 
-  const subtotal   = cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
-  const deliveryFee= (state.deliveryMethod === "pickup") ? 0 : DELIVERY;
-
-  // Para cálculo de total: en pickup ya tenemos los campos auto (puede calcular).
-  const canCalc = state.deliveryMethod === "pickup"
-    ? true
-    : !!(state.distrito && state.direccion);
-
-  const total = canCalc && cart.length>0 ? subtotal + deliveryFee : subtotal;
+  const subtotal=cart.reduce((a,it)=>a+it.unitPrice*it.qty,0);
+  const deliveryFee = feeForState(state);
+  const canCalc = (state.deliveryMethod==="pickup") || (!!(state.distrito && state.direccion));
+  const total = (cart.length>0 && canCalc) ? subtotal + deliveryFee : subtotal;
 
   async function onVoucherSelect(file, previewUrl){
     const THRESHOLD = 1.2 * 1024 * 1024;
     let toUpload = file;
-    try{
-      if (file && file.size > THRESHOLD) {
-        toUpload = await compressImage(file, 1600, 1600, 0.75);
-      }
-    }catch(_){}
+    try{ if (file && file.size > THRESHOLD) { toUpload = await compressImage(file, 1600, 1600, 0.75); } }catch(_){}
     setVoucherFile(toUpload);
     setVoucherPreview(previewUrl || "");
     setVoucherErr("");
@@ -1154,7 +997,7 @@ function App(){
 
     let effective = state;
     try { const saved = JSON.parse(localStorage.getItem('wk_delivery')||'{}'); effective = {...saved, ...state}; } catch(e){}
-    const text=buildWhatsApp(cart,effective,total,voucherUrl);
+    const text=buildWhatsApp(cart,effective,total,voucherUrl, deliveryFee);
     if(text===false){ toast("Completa los datos de entrega"); if (preWin && !preWin.closed) preWin.close(); return; }
     if(text===null){ toast("Carrito vacío"); if (preWin && !preWin.closed) preWin.close(); return; }
 
@@ -1163,13 +1006,8 @@ function App(){
     try {
       const orderId = 'WK-' + Date.now().toString(36).toUpperCase();
       const payload = buildOrderPayloadForSheets({
-        orderId,
-        cart,
-        state: effective,
-        subtotal,
-        total,
-        whatsAppText: decodeURIComponent(text),
-        voucherUrl
+        orderId, cart, state: effective, subtotal,
+        total, deliveryFee, whatsAppText: decodeURIComponent(text), voucherUrl
       });
       console.log('[WK] Enviando a Sheets', { url: SHEETS_WEBAPP_URL, payload });
       const ok = await registrarPedidoGSheet(payload);
@@ -1180,12 +1018,8 @@ function App(){
       console.error('[WK] Error preparando envío a Sheets:', _e);
     }
 
-    if (isMobile) {
-      window.location.href = waWeb;
-    } else {
-      if (preWin && !preWin.closed) { preWin.location.href = waWeb; }
-      else { window.open(waWeb, "_blank"); }
-    }
+    if (isMobile) { window.location.href = waWeb; }
+    else { if (preWin && !preWin.closed) { preWin.location.href = waWeb; } else { window.open(waWeb, "_blank"); } }
 
     try{
       localStorage.removeItem("wk_cart");
@@ -1194,9 +1028,7 @@ function App(){
       sessionStorage.removeItem("wk_cart");
     }catch(e){}
 
-    setVoucherFile(null);
-    setVoucherPreview("");
-
+    setVoucherFile(null); setVoucherPreview("");
     setTimeout(()=>{ location.href='index.html'; }, 2000);
   }
 
@@ -1214,23 +1046,12 @@ function App(){
       const first = order.find(k => errs[k]);
       if(first){
         const el = document.getElementById("field-"+first);
-        if(el){
-          el.scrollIntoView({behavior:"smooth", block:"center"});
-          const input = el.querySelector("input,select,textarea");
-          input?.focus?.();
-        }
-      }else{
-        document.getElementById("voucher-area")?.scrollIntoView({behavior:"smooth", block:"center"});
-      }
+        if(el){ el.scrollIntoView({behavior:"smooth", block:"center"}); const input = el.querySelector("input,select,textarea"); input?.focus?.(); }
+      }else{ document.getElementById("voucher-area")?.scrollIntoView({behavior:"smooth", block:"center"}); }
       toast("Completar datos de entrega y subir voucher de pago");
       return;
     }
-    try{
-      setSending(true);
-      await enviar();
-    } finally {
-      setSending(false);
-    }
+    try{ setSending(true); await enviar(); } finally { setSending(false); }
   }
 
   return (
@@ -1238,14 +1059,7 @@ function App(){
       <HeaderMini onSeguir={seguirComprando}/>
       <DatosEntrega state={state} setState={setState} errors={errors}/>
       <CartList cart={cart} setCart={setCart} canCalc={canCalc} deliveryFee={deliveryFee}/>
-      <PaymentBox
-        total={total}
-        canCalc={canCalc}
-        onVoucherSelect={onVoucherSelect}
-        onVoucherClear={onVoucherClear}
-        voucherPreview={voucherPreview}
-        voucherErr={voucherErr}
-      />
+      <PaymentBox total={total} canCalc={canCalc} onVoucherSelect={onVoucherSelect} onVoucherClear={onVoucherClear} voucherPreview={voucherPreview} voucherErr={voucherErr}/>
       <section className="max-w-4xl mx-auto px-3 sm:px-4 pt-4 pb-16">
         <button
           type="button"
