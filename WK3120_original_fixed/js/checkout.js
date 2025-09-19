@@ -333,7 +333,7 @@ function DatosEntrega({state,setState, errors={}}){
               <optgroup label="Zona Norte">
                 {DISTRITOS_NORTE.map(d=> <option key={"N-"+d} value={d}>{d}</option>)}
               </optgroup>
-              <optgroup label="Zona Sur (S/7)">
+              <optgroup label="Zona Sur">
                 {DISTRITOS_SUR.map(d=> <option key={"S-"+d} value={d}>{d}</option>)}
               </optgroup>
             </select>
