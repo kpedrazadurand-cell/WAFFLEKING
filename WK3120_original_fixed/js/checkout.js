@@ -339,7 +339,7 @@ function DatosEntrega({state,setState, errors={}}){
             </select>
             {!isPickup && (distrito ?
               <div className="text-xs text-amber-900 mt-1">Tarifa de delivery para {distrito}: <b>{soles(feeForDistrict(distrito))}</b></div>
-            : <div className="text-xs text-slate-600 mt-1">Zona Norte S/5 · Zonas Sur listadas S/7</div>)}
+            : <div className="text-xs text-slate-600 mt-1">Zona Norte · Zonas Sur listadas </div>)}
             {errors.distrito && <div className="text-xs text-[var(--wk-title-red)] mt-1">{errors.distrito}</div>}
           </div>
 
